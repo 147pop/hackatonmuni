@@ -3,7 +3,7 @@
 ## Sistema de Estacionamiento Medido Digital — Municipalidad de Salta
 
 **Estandar:** IEEE 830-1998  
-**Version:** 1.0  
+**Version:** 1.1
 **Fecha:** 28 de mayo de 2026  
 **Proyecto:** PunaTech 2026 — Hackathon  
 
@@ -30,8 +30,8 @@ El documento esta dirigido a los equipos de desarrollo, al jurado del hackathon 
 
 El sistema SEM Digital comprende:
 
-- **App Conductor**: Aplicacion movil para conductores (registro opcional, pago digital, consulta de deuda, emergencias).
-- **App/Herramienta Permisionario**: Interfaz para que el permisionario gestione su cuadra, registre estacionamientos y emita tickets digitales.
+- **Web Responsive Conductor**: Aplicacion web responsive para conductores (registro opcional, pago digital, consulta de deuda, emergencias).
+- **Web Responsive Permisionario**: Interfaz web responsive para que el permisionario gestione su cuadra, registre estacionamientos y emita tickets digitales.
 - **Portal Web Publico**: Pagina web para pago sin registro y consulta/pago de deudas por dominio.
 - **Panel Administrativo Municipal**: Dashboard web completo para gestion, reportes en tiempo real, auditoria y administracion del sistema.
 - **Backend y APIs**: Servicios centrales que integran MercadoPago, gestionan la logica de negocio y almacenan toda la informacion.
@@ -95,15 +95,15 @@ SEM Digital es un ecosistema que:
 2. Centraliza todos los pagos (digitales y efectivo) en la **cuenta de la Municipalidad**, que luego liquida al permisionario.
 3. Registra electronicamente el 100% de las transacciones, eliminando talonarios fisicos.
 4. Aplica automaticamente las reglas de la Ordenanza (horarios, tarifas, fraccionamiento, descuentos).
-5. Genera **deuda por dominio** cuando un conductor no paga, cobrable via app o web municipal.
+5. Genera **deuda por dominio** cuando un conductor no paga, cobrable via web municipal.
 6. Provee **botones de emergencia** para seguridad fisica y resolucion de disputas.
 
 #### 2.1.3 Contexto del Sistema
 
 ```
 +-------------------+       +-------------------+       +-------------------+
-|   App Conductor   |<----->|                   |<----->| App Permisionario |
-| (iOS/Android/Web) |       |   Backend SEM     |       |  (iOS/Android)    |
+| Web Conductor     |<----->|                   |<----->| Web Permisionario |
+| Responsive/PWA    |       |   Backend SEM     |       | Responsive/PWA    |
 +-------------------+       |   Digital         |       +-------------------+
                              |                   |
 +-------------------+       |   - API REST      |       +-------------------+
@@ -125,10 +125,10 @@ SEM Digital es un ecosistema que:
 |----|---------|-------------|
 | F01 | Pago digital via QR | Conductor escanea QR fijo del permisionario y paga via MercadoPago |
 | F02 | Pago en efectivo con registro | Permisionario registra pago en efectivo digitalmente |
-| F03 | Pago sin cuenta | Conductor paga via web publica sin necesidad de registrarse en la app |
+| F03 | Pago sin cuenta | Conductor paga via web publica sin necesidad de crear una cuenta SEM |
 | F04 | Lectura de patente | Ingreso manual o captura OCR del dominio del vehiculo |
 | F05 | Deuda por dominio | Generacion y gestion de deuda asociada a patente por falta de pago |
-| F06 | Identidad verificable | Conductor puede verificar identidad del permisionario via app y credencial digital |
+| F06 | Identidad verificable | Conductor puede verificar identidad del permisionario via web responsive y credencial digital |
 | F07 | Emergencias | Boton de panico silencioso y boton de disputa con geolocalizacion |
 | F08 | Cumplimiento normativo | Aplicacion automatica de horarios, tarifas, descuentos y restricciones |
 | F09 | Liquidacion a permisionarios | Calculo y transferencia de ingresos descontando cuota municipal |
@@ -138,14 +138,14 @@ SEM Digital es un ecosistema que:
 
 #### 2.3.1 Conductor Registrado
 
-- **Perfil**: Persona que estaciona en zona SEM y posee la app instalada con cuenta creada.
+- **Perfil**: Persona que estaciona en zona SEM y posee una cuenta creada en la web responsive SEM.
 - **Nivel tecnico**: Variable, desde bajo hasta alto.
 - **Frecuencia de uso**: Diaria a esporadica.
 - **Capacidades**: Pago digital, historial, consulta de deuda, verificacion de permisionario, emergencias.
 
 #### 2.3.2 Conductor sin Cuenta
 
-- **Perfil**: Persona que estaciona pero no tiene la app ni desea registrarse.
+- **Perfil**: Persona que estaciona pero no tiene cuenta SEM ni desea registrarse.
 - **Nivel tecnico**: Puede ser bajo.
 - **Frecuencia de uso**: Esporadica.
 - **Capacidades**: Pago escaneando QR (via MercadoPago propio), pago en efectivo al permisionario, consulta y pago de deuda via web municipal ingresando dominio.
@@ -153,7 +153,7 @@ SEM Digital es un ecosistema que:
 #### 2.3.3 Permisionario
 
 - **Perfil**: Persona jubilada o con discapacidad, autorizada por la Municipalidad. Aproximadamente 900 personas.
-- **Nivel tecnico**: Potencialmente bajo. Puede no disponer de smartphone propio.
+- **Nivel tecnico**: Potencialmente bajo. Puede no disponer de dispositivo propio compatible.
 - **Frecuencia de uso**: Diaria durante su turno.
 - **Capacidades**: Registrar estacionamientos, registrar pagos en efectivo, portar QR fijo (impreso o digital), emitir credencial digital, usar boton de emergencia.
 
@@ -172,9 +172,9 @@ SEM Digital es un ecosistema que:
 | R02 | MercadoPago es la plataforma de pago digital obligatoria |
 | R03 | Los permisionarios deben mantenerse como agentes activos del sistema con ingresos garantizados |
 | R04 | El tiempo total de una transaccion de pago no debe superar los 10 segundos |
-| R05 | El sistema debe funcionar con conectividad de datos moviles estandar |
-| R06 | El sistema debe ser usable por personas con bajo manejo de smartphone |
-| R07 | No se puede asumir que el permisionario posee smartphone propio |
+| R05 | El sistema debe funcionar con conectividad de datos moviles estandar desde navegadores web |
+| R06 | El sistema debe ser usable por personas con bajo manejo de dispositivos moviles |
+| R07 | No se puede asumir que el permisionario posee dispositivo propio compatible |
 | R08 | Todo pago (digital o efectivo) debe quedar registrado electronicamente |
 | R09 | Los talonarios fisicos quedan eliminados |
 
@@ -182,11 +182,11 @@ SEM Digital es un ecosistema que:
 
 | ID | Suposicion/Dependencia |
 |----|----------------------|
-| S01 | Conectividad de datos moviles razonable en toda el area SEM |
+| S01 | Conectividad de datos moviles razonable en toda el area SEM para uso web |
 | S02 | MercadoPago mantiene disponible su API con tiempos de respuesta aceptables (<3s) |
 | S03 | La Municipalidad provee listado actualizado de permisionarios, cuadras habilitadas y zonas nocturnas |
 | S04 | La Municipalidad puede emitir credenciales digitales a permisionarios |
-| S05 | Para permisionarios sin smartphone, la Municipalidad puede proveer dispositivo o el QR se imprime en material fisico |
+| S05 | Para permisionarios sin dispositivo compatible, la Municipalidad puede proveer uno o el QR se imprime en material fisico |
 | S06 | El calendario de feriados nacionales y provinciales esta disponible como dato de entrada |
 | S07 | Las tarifas son configurables por la Municipalidad y pueden actualizarse sin despliegue de software |
 
@@ -200,8 +200,8 @@ SEM Digital es un ecosistema que:
 
 | Interfaz | Plataforma | Descripcion |
 |----------|-----------|-------------|
-| UI-01 App Conductor | iOS / Android | Registro, pago, historial, verificacion permisionario, emergencias, consulta deuda |
-| UI-02 App Permisionario | iOS / Android | Registro estacionamiento, ingreso patente (manual/OCR), registro efectivo, credencial digital, emergencias |
+| UI-01 Web Responsive Conductor | Navegador web responsive | Registro, pago, historial, verificacion permisionario, emergencias, consulta deuda |
+| UI-02 Web Responsive Permisionario | Navegador web responsive | Registro estacionamiento, ingreso patente (manual/OCR), registro efectivo, credencial digital, emergencias |
 | UI-03 Portal Web Publico | Navegador web responsive | Pago sin cuenta via QR, consulta y pago de deuda por dominio |
 | UI-04 Panel Admin | Navegador web desktop | Dashboard, reportes, gestion de permisionarios, zonas, tarifas, multas, auditoria |
 
@@ -209,17 +209,17 @@ SEM Digital es un ecosistema que:
 
 | Interfaz | Descripcion |
 |----------|-------------|
-| HW-01 | Camara del smartphone para lectura OCR de patentes |
-| HW-02 | Camara del smartphone para escaneo de codigos QR |
-| HW-03 | GPS del smartphone para geolocalizacion en emergencias y validacion de zona |
-| HW-04 | QR impreso en material resistente (tarjeta plastificada/chapa) para permisionarios sin smartphone |
+| HW-01 | Camara accesible desde navegador para lectura OCR de patentes |
+| HW-02 | Camara accesible desde navegador para escaneo de codigos QR |
+| HW-03 | Geolocalizacion del navegador para emergencias y validacion de zona |
+| HW-04 | QR impreso en material resistente (tarjeta plastificada/chapa) para permisionarios sin dispositivo compatible |
 
 #### 3.1.3 Interfaces de Software
 
 | Interfaz | Descripcion |
 |----------|-------------|
 | SW-01 | API MercadoPago: creacion de cobros, QR estatico, consulta de pagos, notificaciones webhook |
-| SW-02 | Servicio de notificaciones push (FCM / APNs) |
+| SW-02 | Servicio de notificaciones web (Web Push, correo o SMS segun disponibilidad del navegador) |
 | SW-03 | Servicio de OCR para reconocimiento de patentes |
 | SW-04 | API del backend SEM Digital (REST) |
 
@@ -239,15 +239,15 @@ SEM Digital es un ecosistema que:
 
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
-| RF-PAG-01 | El sistema debe permitir al conductor pagar escaneando el QR fijo del permisionario con la app SEM o con la app MercadoPago | Alta |
+| RF-PAG-01 | El sistema debe permitir al conductor pagar escaneando el QR fijo del permisionario desde la web responsive SEM o desde MercadoPago | Alta |
 | RF-PAG-02 | El QR fijo del permisionario debe estar vinculado a la cuenta MercadoPago de la Municipalidad, no del permisionario | Alta |
 | RF-PAG-03 | Al escanear el QR, el sistema debe presentar al conductor las opciones de tiempo de estacionamiento con el monto correspondiente | Alta |
 | RF-PAG-04 | El sistema debe admitir pago con transferencia bancaria, tarjeta de debito y tarjeta de credito a traves de MercadoPago | Alta |
 | RF-PAG-05 | El sistema debe registrar digitalmente los pagos en efectivo. El permisionario ingresa el monto y dominio; el sistema genera un ticket digital como comprobante | Alta |
 | RF-PAG-06 | Para pagos en efectivo, el sistema debe generar un comprobante digital (numero unico) que el conductor puede consultar con su dominio | Alta |
 | RF-PAG-07 | El sistema debe aplicar automaticamente el descuento del 20% en pagos digitales. Este descuento lo absorbe la Municipalidad de su porcion, sin afectar el ingreso del permisionario | Alta |
-| RF-PAG-08 | El sistema debe permitir el pago sin cuenta: el conductor escanea el QR con la camara nativa del celular, se abre una pagina web donde ingresa su dominio y paga via MercadoPago sin necesitar cuenta en la app SEM | Alta |
-| RF-PAG-09 | El sistema debe admitir pago directo desde la app MercadoPago del conductor (escaneando el QR del permisionario) sin requerir la app SEM | Media |
+| RF-PAG-08 | El sistema debe permitir el pago sin cuenta: el conductor escanea el QR con la camara del dispositivo, se abre una pagina web responsive donde ingresa su dominio y paga via MercadoPago sin necesitar cuenta SEM | Alta |
+| RF-PAG-09 | El sistema debe admitir pago directo desde MercadoPago (escaneando el QR del permisionario) sin requerir cuenta SEM | Media |
 | RF-PAG-10 | Toda transaccion debe completarse en menos de 10 segundos desde la confirmacion del conductor | Alta |
 | RF-PAG-11 | El sistema debe emitir notificacion al permisionario cuando un pago digital se confirma exitosamente | Alta |
 | RF-PAG-12 | El sistema debe registrar para cada pago: timestamp, dominio, monto, medio de pago, ID permisionario, ubicacion (cuadra), duracion contratada | Alta |
@@ -271,11 +271,11 @@ SEM Digital es un ecosistema que:
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
 | RF-PAT-01 | El sistema debe permitir al permisionario ingresar el dominio del vehiculo de forma manual (teclado) | Alta |
-| RF-PAT-02 | El sistema debe ofrecer opcionalmente la captura del dominio mediante OCR usando la camara del smartphone | Media |
+| RF-PAT-02 | El sistema debe ofrecer opcionalmente la captura del dominio mediante OCR usando la camara disponible desde el navegador | Media |
 | RF-PAT-03 | El OCR debe reconocer formatos de patente argentinos vigentes (AA 000 AA y formatos anteriores) | Media |
 | RF-PAT-04 | Cuando un conductor no paga el estacionamiento, el sistema debe generar una deuda asociada al dominio del vehiculo | Alta |
 | RF-PAT-05 | La deuda por dominio debe registrar: fecha, hora, ubicacion (cuadra), monto adeudado, ID permisionario que registro el incumplimiento | Alta |
-| RF-PAT-06 | El conductor debe poder consultar y pagar su deuda desde la app SEM ingresando su dominio | Alta |
+| RF-PAT-06 | El conductor debe poder consultar y pagar su deuda desde la web responsive SEM ingresando su dominio | Alta |
 | RF-PAT-07 | El conductor sin cuenta debe poder consultar y pagar su deuda desde el portal web publico de la Municipalidad ingresando su dominio | Alta |
 | RF-PAT-08 | El pago de deuda debe realizarse a traves de MercadoPago con los mismos medios habilitados (transferencia, debito, credito) | Alta |
 | RF-PAT-09 | El sistema debe mantener un historial de deudas por dominio con su estado (pendiente, pagada, vencida) | Alta |
@@ -286,37 +286,37 @@ SEM Digital es un ecosistema que:
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
 | RF-PER-01 | Cada permisionario debe tener un QR fijo unico asignado por el sistema, vinculado a su legajo y cuadra | Alta |
-| RF-PER-02 | El QR debe poder generarse en formato digital (pantalla) e imprimible (para permisionarios sin smartphone) | Alta |
+| RF-PER-02 | El QR debe poder generarse en formato digital (pantalla web) e imprimible (para permisionarios sin dispositivo compatible) | Alta |
 | RF-PER-03 | El permisionario debe contar con una credencial digital municipal que muestre: foto, nombre completo, numero de legajo, cuadra asignada y estado (activo/inactivo) | Alta |
 | RF-PER-04 | La credencial digital debe ser verificable: al escanear el QR del permisionario, el conductor ve el perfil verificado con foto y datos | Alta |
 | RF-PER-05 | El sistema debe calcular la liquidacion del permisionario: total recaudado en su cuadra menos el 20% de cuota municipal | Alta |
 | RF-PER-06 | El sistema debe transferir la liquidacion al permisionario a traves de MercadoPago o el medio que defina la Municipalidad, en la frecuencia configurada | Alta |
 | RF-PER-07 | El permisionario debe poder visualizar un resumen de su actividad diaria: cantidad de vehiculos, monto recaudado, pagos digitales vs efectivo | Media |
 | RF-PER-08 | El sistema debe validar que el permisionario solo opere dentro de su cuadra asignada y horario autorizado | Alta |
-| RF-PER-09 | Para permisionarios sin smartphone: el QR impreso en material resistente (tarjeta plastificada) es suficiente para que el conductor pague. El registro del estacionamiento puede realizarse desde un dispositivo provisto por la Municipalidad o por el conductor via la app | Alta |
+| RF-PER-09 | Para permisionarios sin dispositivo compatible: el QR impreso en material resistente (tarjeta plastificada) es suficiente para que el conductor pague. El registro del estacionamiento puede realizarse desde un dispositivo provisto por la Municipalidad o por el conductor via web responsive | Alta |
 | RF-PER-10 | El sistema debe permitir al administrador dar de alta, modificar y dar de baja permisionarios | Alta |
 
 #### 3.2.5 Modulo de Conductor (RF-USR)
 
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
-| RF-USR-01 | El conductor debe poder registrarse en la app con: nombre, email, telefono y al menos un dominio de vehiculo | Media |
+| RF-USR-01 | El conductor debe poder registrarse en la web responsive con: nombre, email, telefono y al menos un dominio de vehiculo | Media |
 | RF-USR-02 | El conductor debe poder agregar multiples dominios a su cuenta | Baja |
 | RF-USR-03 | El conductor debe poder consultar su historial de estacionamientos y pagos | Media |
-| RF-USR-04 | Al escanear el QR del permisionario, la app debe mostrar automaticamente el perfil verificado del permisionario (foto, nombre, legajo, estado activo) para que el conductor valide su identidad | Alta |
+| RF-USR-04 | Al escanear el QR del permisionario, la web responsive debe mostrar automaticamente el perfil verificado del permisionario (foto, nombre, legajo, estado activo) para que el conductor valide su identidad | Alta |
 | RF-USR-05 | El conductor debe poder verificar la identidad del permisionario tambien escaneando la credencial digital que porta el permisionario | Alta |
 | RF-USR-06 | El conductor debe poder consultar el tiempo restante de su estacionamiento activo | Media |
 | RF-USR-07 | El sistema debe notificar al conductor cuando su tiempo de estacionamiento este por vencer (5 minutos antes) | Media |
-| RF-USR-08 | El conductor debe poder extender su tiempo de estacionamiento desde la app antes de que expire | Media |
+| RF-USR-08 | El conductor debe poder extender su tiempo de estacionamiento desde la web responsive antes de que expire | Media |
 
 #### 3.2.6 Modulo de Emergencias (RF-EME)
 
 | ID | Requisito | Prioridad |
 |----|-----------|-----------|
-| RF-EME-01 | La app del permisionario debe incluir un boton de panico silencioso para situaciones de inseguridad o agresion fisica | Alta |
-| RF-EME-02 | La app del conductor debe incluir un boton de panico silencioso con la misma funcionalidad | Alta |
+| RF-EME-01 | La interfaz web del permisionario debe incluir un boton de panico silencioso para situaciones de inseguridad o agresion fisica | Alta |
+| RF-EME-02 | La interfaz web del conductor debe incluir un boton de panico silencioso con la misma funcionalidad | Alta |
 | RF-EME-03 | Al activar el boton de panico, el sistema debe enviar una alerta silenciosa con la ubicacion GPS en tiempo real a la central de seguridad municipal y/o policia | Alta |
-| RF-EME-04 | La app del permisionario y del conductor deben incluir un boton visible de "Reportar disputa" para conflictos entre conductor y permisionario | Alta |
+| RF-EME-04 | Las interfaces web del permisionario y del conductor deben incluir un boton visible de "Reportar disputa" para conflictos entre conductor y permisionario | Alta |
 | RF-EME-05 | Al reportar una disputa, el sistema debe registrar: ubicacion, timestamp, IDs de las partes involucradas, y notificar a un supervisor designado | Alta |
 | RF-EME-06 | El boton de panico silencioso no debe producir ningun feedback visual o sonoro en el dispositivo que pueda alertar al agresor | Alta |
 | RF-EME-07 | El sistema debe mantener un registro de todas las emergencias y disputas reportadas para auditoria | Media |
@@ -388,9 +388,9 @@ SEM Digital es un ecosistema que:
 
 | ID | Requisito |
 |----|-----------|
-| RNF-15 | La app del conductor debe ser operable con un maximo de 3 pasos para completar un pago (escanear QR, confirmar tiempo, confirmar pago) |
-| RNF-16 | La interfaz del permisionario debe usar tipografia grande (minimo 16sp) y botones amplios, considerando usuarios de edad avanzada |
-| RNF-17 | El sistema debe funcionar en smartphones con Android 8+ y iOS 14+ |
+| RNF-15 | La web responsive del conductor debe ser operable con un maximo de 3 pasos para completar un pago (escanear QR, confirmar tiempo, confirmar pago) |
+| RNF-16 | La interfaz web del permisionario debe usar tipografia grande (minimo 16px) y botones amplios, considerando usuarios de edad avanzada |
+| RNF-17 | El sistema debe funcionar en navegadores modernos de escritorio y moviles sin requerir instalacion |
 | RNF-18 | El portal web publico debe ser responsive y funcional en navegadores moviles sin requerir instalacion |
 | RNF-19 | Los flujos criticos (pago, registro estacionamiento) deben poder completarse sin necesidad de leer instrucciones |
 
@@ -408,14 +408,14 @@ SEM Digital es un ecosistema que:
 
 ### Apendice A: Flujos de Pago
 
-#### A.1 Flujo de Pago Digital (Conductor con App SEM)
+#### A.1 Flujo de Pago Digital (Conductor con Web Responsive SEM)
 
 ```
 1. Conductor llega a cuadra SEM y estaciona
-2. Conductor abre App SEM → escanea QR fijo del permisionario
-3. App muestra perfil verificado del permisionario (foto, nombre, legajo)
+2. Conductor abre la web responsive SEM → escanea QR fijo del permisionario
+3. La web muestra perfil verificado del permisionario (foto, nombre, legajo)
 4. Conductor ingresa dominio (manual o OCR) y selecciona duracion
-5. App calcula monto con descuento 20% digital automatico
+5. La web calcula monto con descuento 20% digital automatico
 6. Conductor confirma → se redirige a MercadoPago
 7. MercadoPago procesa pago (transferencia/debito/credito) → confirma
 8. Backend registra transaccion completa
@@ -423,10 +423,10 @@ SEM Digital es un ecosistema que:
 10. Conductor recibe ticket digital con tiempo restante
 ```
 
-#### A.2 Flujo de Pago sin Cuenta (QR con camara nativa)
+#### A.2 Flujo de Pago sin Cuenta (QR con camara del dispositivo)
 
 ```
-1. Conductor escanea QR del permisionario con camara nativa del celular
+1. Conductor escanea QR del permisionario con la camara del dispositivo
 2. Se abre pagina web publica del SEM
 3. Web muestra datos del permisionario y cuadra
 4. Conductor ingresa dominio y selecciona duracion
@@ -440,7 +440,7 @@ SEM Digital es un ecosistema que:
 
 ```
 1. Conductor indica al permisionario que pagara en efectivo
-2. Permisionario abre app → "Registrar estacionamiento"
+2. Permisionario abre la web responsive → "Registrar estacionamiento"
 3. Permisionario ingresa dominio (manual o OCR)
 4. Permisionario selecciona duracion y registra pago en efectivo
 5. Sistema genera ticket digital con numero unico de comprobante
@@ -453,12 +453,12 @@ SEM Digital es un ecosistema que:
 
 ```
 1. Permisionario detecta vehiculo estacionado sin pago
-2. Permisionario abre app → "Registrar incumplimiento"
+2. Permisionario abre la web responsive → "Registrar incumplimiento"
 3. Permisionario ingresa dominio del vehiculo (manual o OCR)
 4. Sistema genera deuda asociada al dominio con fecha, hora, cuadra y monto
 5. Deuda queda pendiente en el sistema
 6. Conductor puede consultar y pagar la deuda:
-   a. Desde App SEM → seccion "Mis deudas" → pago via MercadoPago
+   a. Desde web responsive SEM → seccion "Mis deudas" → pago via MercadoPago
    b. Desde portal web municipal → ingresa dominio → ve deudas → paga via MercadoPago
 7. Al pagar, la deuda cambia de estado a "pagada" y se registra el pago
 ```
@@ -466,14 +466,14 @@ SEM Digital es un ecosistema que:
 #### A.5 Flujo de Pago con MercadoPago Directo
 
 ```
-1. Conductor abre su app MercadoPago
+1. Conductor abre MercadoPago
 2. Escanea QR fijo del permisionario
 3. MercadoPago muestra la opcion de pago a cuenta de la Municipalidad
 4. Conductor completa el pago
 5. Webhook de MercadoPago notifica al backend SEM
 6. Backend registra la transaccion y notifica al permisionario
 Nota: en este flujo el conductor debe comunicar el dominio al permisionario
-      para que este lo registre manualmente en su app
+      para que este lo registre manualmente en la web responsive
 ```
 
 ### Apendice B: Matriz de Trazabilidad
