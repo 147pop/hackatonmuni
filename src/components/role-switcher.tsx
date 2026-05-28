@@ -1,23 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { appRoutes } from "@/lib/routes";
 
 const storageKey = "sem-demo-role";
+const roleChangeEvent = "sem-demo-role-change";
+const defaultRole = appRoutes[0].label;
+
+function getStoredRole() {
+  if (typeof window === "undefined") {
+    return defaultRole;
+  }
+
+  return window.localStorage.getItem(storageKey) ?? defaultRole;
+}
+
+function subscribeToRoleChanges(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(roleChangeEvent, callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(roleChangeEvent, callback);
+  };
+}
 
 export function RoleSwitcher() {
-  const [selectedRole, setSelectedRole] = useState(appRoutes[0].label);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem(storageKey);
-    if (stored) {
-      setSelectedRole(stored);
-    }
-  }, []);
+  const selectedRole = useSyncExternalStore(
+    subscribeToRoleChanges,
+    getStoredRole,
+    () => defaultRole
+  );
 
   function selectRole(role: string) {
-    setSelectedRole(role);
     window.localStorage.setItem(storageKey, role);
+    window.dispatchEvent(new Event(roleChangeEvent));
   }
 
   return (
