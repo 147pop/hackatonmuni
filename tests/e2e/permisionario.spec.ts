@@ -1,12 +1,21 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/** Bypass RF-NOR-01 business-hours block so payment tests pass at any time of day. */
+async function bypassBusinessHours(page: Page) {
+  await page.evaluate(() => {
+    localStorage.setItem('sem_config', JSON.stringify({
+      horarioDiurnoInicio: '00:00',
+      horarioDiurnoFinSemana: '23:59',
+      horarioDiurnoFinSabado: '23:59',
+      horarioNocturnoInicio: '22:00',
+      horarioNocturnoFin: '05:00',
+    }));
+  });
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
-  // Seed localStorage via reset (click reset button or navigate directly)
-  await page.evaluate(() => {
-    // Trigger demo reset via localStorage clear so seed loads
-    localStorage.clear();
-  });
+  await page.evaluate(() => { localStorage.clear(); });
   await page.goto('/permisionario');
 });
 
@@ -24,23 +33,19 @@ test('seleccionar permisionario muestra dashboard', async ({ page }) => {
 });
 
 test('registrar pago efectivo genera ticket en actividad', async ({ page }) => {
-  // Select permisionario
-  await page.getByText('Rosa Martínez').click();
+  // Bypass RF-NOR-01 so this test passes regardless of time of day
+  await bypassBusinessHours(page);
+  await page.reload();
 
-  // Go to register payment
+  await page.getByText('Rosa Martínez').click();
   await page.getByText('Registrar pago efectivo').click();
   await expect(page).toHaveURL('/permisionario/registrar');
 
-  // Fill plate via OCR simulation
-  await page.getByTitle(/simulación/i).click();
-  // Wait for OCR delay
+  await page.getByTitle(/simulaci/i).click();
   await page.waitForTimeout(1500);
-  // Select 1 hour
   await page.getByText('1 hora').click();
-  // Submit
   await page.getByRole('button', { name: /registrar pago efectivo/i }).click();
 
-  // Should show success
   await expect(page.getByText('Ticket generado')).toBeVisible({ timeout: 3000 });
   await expect(page.getByText(/T-/)).toBeVisible();
 });
@@ -50,8 +55,7 @@ test('registrar incumplimiento genera deuda', async ({ page }) => {
   await page.getByText('Registrar incumplimiento').click();
   await expect(page).toHaveURL('/permisionario/incumplimiento');
 
-  // Use OCR to fill plate
-  await page.getByTitle(/simulación/i).click();
+  await page.getByTitle(/simulaci/i).click();
   await page.waitForTimeout(1500);
 
   await page.getByRole('button', { name: /registrar incumplimiento/i }).click();
@@ -61,13 +65,13 @@ test('registrar incumplimiento genera deuda', async ({ page }) => {
 test('botón de pánico no produce feedback visible', async ({ page }) => {
   await page.getByText('Rosa Martínez').click();
 
-  // Click the panic button (aria-label="Ayuda")
   const panicBtn = page.getByRole('button', { name: 'Ayuda' });
   await panicBtn.click();
 
-  // No toast, no modal, no text change should appear
-  await expect(page.getByText(/pánico|alerta|emergencia|enviado/i)).not.toBeVisible();
-  // Button still present and unchanged
+  // RF-EME-06: zero visible feedback — no toast, no modal, no text change
+  // Note: "Emergencias" section label is always visible — we check for FEEDBACK text only
+  await expect(page.getByText('Alerta enviada')).not.toBeVisible();
+  await expect(page.getByText('Alerta de pánico')).not.toBeVisible();
   await expect(panicBtn).toBeVisible();
 });
 
@@ -82,8 +86,8 @@ test('credencial muestra nombre y legajo', async ({ page }) => {
 test('tab QR muestra código QR', async ({ page }) => {
   await page.getByText('Rosa Martínez').click();
   await page.getByText('Ver credencial y QR').click();
-  await page.getByText('QR Fijo').click();
-  // SVG QR should be rendered
-  await expect(page.locator('svg')).toBeVisible();
+  await page.getByRole('button', { name: 'QR Fijo' }).click();
+  // QRCodeSVG renders with width="180" — unique among all icons (lucide icons are 24x24)
+  await expect(page.locator('svg[width="180"]')).toBeVisible();
   await expect(page.getByText('QR Fijo — SEM Digital')).toBeVisible();
 });

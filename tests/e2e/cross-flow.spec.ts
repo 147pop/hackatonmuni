@@ -6,12 +6,26 @@
  * admin sees everything in dashboard + reportes →
  * admin generates liquidacion
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function bypassBusinessHours(page: Page) {
+  await page.evaluate(() => {
+    localStorage.setItem('sem_config', JSON.stringify({
+      horarioDiurnoInicio: '00:00',
+      horarioDiurnoFinSemana: '23:59',
+      horarioDiurnoFinSabado: '23:59',
+      horarioNocturnoInicio: '22:00',
+      horarioNocturnoFin: '05:00',
+    }));
+  });
+}
 
 test('full cross-module demo flow', async ({ page }) => {
   // ── Setup ────────────────────────────────────────────────────────────────
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
+  // Bypass RF-NOR-01 so cash payment works at any time of day
+  await bypassBusinessHours(page);
 
   // ── Step 1: Permisionario registers cash payment ─────────────────────────
   await page.evaluate(() => localStorage.setItem('sem_permisionario_id', 'perm-1'));
