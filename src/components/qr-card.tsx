@@ -10,8 +10,9 @@ interface QRCardProps {
 }
 
 export function QRCard({ permisionario, printable = false }: QRCardProps) {
-  // Value encoded in QR — conductor scans this URL to initiate payment
-  const qrValue = `sem://permisionario/${permisionario.id}?cuadra=${encodeURIComponent(permisionario.cuadraAsignada)}`;
+  // En producción (o dev configurado), usamos APP_URL. Si no, detectamos del window si estamos en el cliente,
+  // con fallback a localhost:3001
+  const qrValue = `${typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || '')}/pagar/${permisionario.id}`;
 
   return (
     <div className={`flex flex-col items-center gap-4 ${printable ? 'p-8 bg-white border-2 border-gray-300 rounded-2xl' : ''}`}>

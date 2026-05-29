@@ -16,6 +16,7 @@ import type {
   ConfiguracionNormativa,
   UserRole,
   AdminRole,
+  VehiculoObservado,
 } from '@/domain/types';
 import {
   SEED_PERMISIONARIOS,
@@ -48,6 +49,7 @@ const K = {
   activePermisionarioId: 'sem_permisionario_id',
   adminRole: 'sem_admin_role',
   initialized: 'sem_initialized',
+  observados: 'sem_observados',
 } as const;
 
 let ticketCounter = 1000;
@@ -83,6 +85,7 @@ export function resetToDemo(): void {
   storageSet(K.tickets, []);
   storageSet(K.emergencias, []);
   storageSet(K.liquidaciones, []);
+  storageSet(K.observados, []);
   storageSet(K.auditEvents, []);
   storageSet(K.activeRole, 'conductor');
   storageSet(K.adminRole, 'administrador');
@@ -390,3 +393,27 @@ export const estacionamientoStore = {
     return list[idx];
   },
 };
+
+// ─── Vehiculos Observados ──────────────────────────────────────────────────
+
+export const observadoStore = {
+  getAll: (): VehiculoObservado[] => storageGet<VehiculoObservado[]>(K.observados, []),
+  getByPermisionarioCuadra: (permisionarioId: string, cuadra: string): VehiculoObservado[] =>
+    observadoStore.getAll().filter((o) => o.permisionarioId === permisionarioId && o.cuadra === cuadra),
+  getByDominio: (dominio: string): VehiculoObservado | undefined =>
+    observadoStore.getAll().find((o) => o.dominio.toUpperCase() === dominio.toUpperCase()),
+  create: (data: Omit<VehiculoObservado, 'id' | 'timestamp'>): VehiculoObservado => {
+    const list = observadoStore.getAll();
+    // remove previous observation for same domain if exists
+    const filtered = list.filter((o) => o.dominio.toUpperCase() !== data.dominio.toUpperCase());
+    const o: VehiculoObservado = { ...data, id: generateId(), timestamp: new Date().toISOString() };
+    filtered.push(o);
+    storageSet(K.observados, filtered);
+    return o;
+  },
+  remove: (dominio: string) => {
+    const list = observadoStore.getAll().filter((o) => o.dominio.toUpperCase() !== dominio.toUpperCase());
+    storageSet(K.observados, list);
+  },
+};
+

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, CheckCircle, AlertTriangle, Timer } from 'lucide-react';
-import { ticketStore } from '@/lib/sem-store';
+import { Clock, CheckCircle, AlertTriangle, Timer, Search } from 'lucide-react';
+import { ticketStore, observadoStore } from '@/lib/sem-store';
 import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
-import type { Ticket } from '@/domain/types';
+import type { Ticket, VehiculoObservado } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
 import Link from 'next/link';
+import { PlateInput } from './plate-input';
 
 interface CuadraMonitorProps {
   permisionarioId: string;
@@ -44,13 +45,25 @@ function clasificar(tickets: Ticket[]): { activos: TicketConEstado[]; vencidos: 
 export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
   const [activos, setActivos] = useState<TicketConEstado[]>([]);
   const [vencidos, setVencidos] = useState<TicketConEstado[]>([]);
+  const [observados, setObservados] = useState<VehiculoObservado[]>([]);
   const [cerrando, setCerrando] = useState<string | null>(null);
+  const [patenteBusqueda, setPatenteBusqueda] = useState('');
+  const [patenteValida, setPatenteValida] = useState(false);
 
   const refresh = useCallback(() => {
     const tickets = ticketStore.getByPermisionarioCuadra(permisionarioId, cuadra);
     const { activos: a, vencidos: v } = clasificar(tickets);
     setActivos(a);
     setVencidos(v);
+
+    // Filter out observados that already have an active/expired ticket
+    const allObservados = observadoStore.getByPermisionarioCuadra(permisionarioId, cuadra);
+    const impagos = allObservados.filter((obs) => 
+      !a.some((t) => t.dominio.toUpperCase() === obs.dominio.toUpperCase()) &&
+      !v.some((t) => t.dominio.toUpperCase() === obs.dominio.toUpperCase())
+    );
+    // Sort by timestamp desc
+    setObservados(impagos.sort((o1, o2) => new Date(o2.timestamp).getTime() - new Date(o1.timestamp).getTime()));
   }, [permisionarioId, cuadra]);
 
   useEffect(() => {
@@ -64,6 +77,23 @@ export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
     ticketStore.update(ticketId, { activo: false });
     refresh();
     setCerrando(null);
+  }
+
+  function handleQuitarObservado(dominio: string) {
+    observadoStore.remove(dominio);
+    refresh();
+  }
+
+  function handleRegistrar() {
+    if (!patenteValida) return;
+    observadoStore.create({
+      dominio: patenteBusqueda,
+      permisionarioId,
+      cuadra,
+    });
+    setPatenteBusqueda('');
+    setPatenteValida(false);
+    refresh();
   }
 
   const hayVencidos = vencidos.length > 0;
@@ -80,6 +110,66 @@ export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
           </span>
         )}
       </div>
+
+      {/* Buscador / Registro rápido */}
+      <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm space-y-3">
+        <PlateInput 
+          value={patenteBusqueda}
+          onChange={setPatenteBusqueda}
+          onValidChange={setPatenteValida}
+          label="Control de patente"
+        />
+        <button
+          onClick={handleRegistrar}
+          disabled={!patenteValida}
+          className="btn-xl w-full flex items-center justify-center gap-2 bg-municipal-600 hover:bg-municipal-700 disabled:bg-gray-200 disabled:text-gray-400 text-white transition-colors"
+        >
+          <Search className="w-5 h-5" />
+          Registrar llegada / Consultar
+        </button>
+      </div>
+
+      {/* Impagos (Observados) */}
+      {observados.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+             Impagos / Recién llegados ({observados.length})
+          </p>
+          {observados.map((o) => {
+            const minEstacionado = Math.floor((Date.now() - new Date(o.timestamp).getTime()) / 60000);
+            return (
+              <div key={o.id} className="bg-white border border-gray-200 rounded-xl p-3 space-y-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-base font-bold font-mono text-gray-900">{o.dominio}</p>
+                    <p className="text-xs text-gray-500">
+                      Llegó hace {minEstacionado} min
+                    </p>
+                  </div>
+                  <span className={`text-sm font-bold ${minEstacionado > 5 ? 'text-red-600' : 'text-gray-600'}`}>
+                    {minEstacionado > 5 ? 'Sin ticket' : 'En tolerancia'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href={`${ROUTES.permisionario.registrar}?dominio=${o.dominio}`}
+                    className="btn-xl bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center justify-center gap-1.5 text-sm font-medium transition-colors"
+                  >
+                    Cobrar
+                  </Link>
+                  <button
+                    onClick={() => handleQuitarObservado(o.dominio)}
+                    className="btn-xl bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center justify-center gap-1.5 text-sm transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Se fue
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Activos */}
       {activos.length > 0 && (
@@ -144,10 +234,10 @@ export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
         </div>
       )}
 
-      {activos.length === 0 && vencidos.length === 0 && (
+      {activos.length === 0 && vencidos.length === 0 && observados.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-6 text-center bg-gray-50 rounded-xl border border-gray-200">
           <CheckCircle className="w-8 h-8 text-gray-300" />
-          <p className="text-sm text-gray-400">No hay tickets activos en tu cuadra ahora.</p>
+          <p className="text-sm text-gray-400">No hay vehículos registrados en tu cuadra ahora.</p>
         </div>
       )}
     </div>

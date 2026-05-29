@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, Clock, Loader2 } from 'lucide-react';
-import { mockMPPagar } from '@/lib/mock-mercadopago';
+import { CheckCircle, Clock, X } from 'lucide-react';
+import { MercadoPagoSimulator } from './mercadopago-simulator';
 import { deudaStore, pagoStore } from '@/lib/sem-store';
 import type { Deuda } from '@/domain/types';
 
@@ -13,36 +13,27 @@ interface DebtListProps {
 }
 
 export function DebtList({ deudas, onPaid, emptyMessage = 'Sin deudas pendientes.' }: DebtListProps) {
-  const [paying, setPaying] = useState<string | null>(null);
+  const [payingId, setPayingId] = useState<string | null>(null);
   const [paid, setPaid] = useState<Set<string>>(new Set());
 
-  async function handlePagar(deuda: Deuda) {
-    setPaying(deuda.id);
-    const result = await mockMPPagar({
-      monto: deuda.monto,
+  function handleSuccess(deuda: Deuda, transactionId: string) {
+    const pago = pagoStore.create({
       dominio: deuda.dominio,
-      concepto: `Deuda ${deuda.dominio} — ${deuda.cuadra}`,
+      monto: deuda.monto,
+      metodoPago: 'digital',
+      estado: 'success',
+      permisionarioId: deuda.permisionarioId,
+      cuadra: deuda.cuadra,
+      mpTransactionId: transactionId,
     });
-
-    if (result.estado === 'success') {
-      const pago = pagoStore.create({
-        dominio: deuda.dominio,
-        monto: deuda.monto,
-        metodoPago: 'digital',
-        estado: 'success',
-        permisionarioId: deuda.permisionarioId,
-        cuadra: deuda.cuadra,
-        mpTransactionId: result.transactionId,
-      });
-      deudaStore.update(deuda.id, {
-        estado: 'pagada',
-        pagadoAt: new Date().toISOString(),
-        pagoId: pago.id,
-      });
-      setPaid((prev) => new Set([...prev, deuda.id]));
-      onPaid?.(deuda.id);
-    }
-    setPaying(null);
+    deudaStore.update(deuda.id, {
+      estado: 'pagada',
+      pagadoAt: new Date().toISOString(),
+      pagoId: pago.id,
+    });
+    setPaid((prev) => new Set([...prev, deuda.id]));
+    setPayingId(null);
+    onPaid?.(deuda.id);
   }
 
   const pendientes = deudas.filter((d) => d.estado === 'pendiente' && !paid.has(d.id));
@@ -69,8 +60,13 @@ export function DebtList({ deudas, onPaid, emptyMessage = 'Sin deudas pendientes
                   <p className="text-lg font-bold font-mono text-gray-900">{d.dominio}</p>
                   <p className="text-sm text-gray-500 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5" />
-                    {new Date(d.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                    {' · '}{d.cuadra}
+                    {new Date(d.fecha).toLocaleDateString('es-AR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit',
+                    })}
+                    {' · '}
+                    {d.cuadra}
                   </p>
                   {d.tipo === 'hora_extra' && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
@@ -78,19 +74,43 @@ export function DebtList({ deudas, onPaid, emptyMessage = 'Sin deudas pendientes
                     </span>
                   )}
                 </div>
-                <p className="text-xl font-bold text-red-700">${d.monto.toLocaleString('es-AR')}</p>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-red-700">${d.monto.toLocaleString('es-AR')}</p>
+                </div>
               </div>
-              <button
-                onClick={() => handlePagar(d)}
-                disabled={paying === d.id}
-                className="btn-xl bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white w-full flex items-center justify-center gap-2"
-              >
-                {paying === d.id ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Procesando…</>
-                ) : (
-                  <>Pagar con MercadoPago — ${d.monto.toLocaleString('es-AR')}</>
-                )}
-              </button>
+
+              {/* Payment form — inline per debt */}
+              {payingId === d.id ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Pagar deuda
+                    </p>
+                    <button
+                      onClick={() => setPayingId(null)}
+                      className="p-1 text-gray-400 hover:text-gray-600"
+                      aria-label="Cancelar"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <MercadoPagoSimulator
+                    monto={d.monto}
+                    dominio={d.dominio}
+                    concepto={`Deuda ${d.dominio} — ${d.cuadra}`}
+                    onSuccess={(txId) => handleSuccess(d, txId)}
+                    onFailed={() => setPayingId(null)}
+                    label={`Pagar $${d.monto.toLocaleString('es-AR')}`}
+                  />
+                </div>
+              ) : (
+                <button
+                  onClick={() => setPayingId(d.id)}
+                  className="btn-xl bg-blue-500 hover:bg-blue-600 text-white w-full flex items-center justify-center gap-2"
+                >
+                  Pagar con MercadoPago — ${d.monto.toLocaleString('es-AR')}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -100,7 +120,10 @@ export function DebtList({ deudas, onPaid, emptyMessage = 'Sin deudas pendientes
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Pagadas</h3>
           {pagadas.map((d) => (
-            <div key={d.id} className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+            <div
+              key={d.id}
+              className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between"
+            >
               <div className="space-y-0.5">
                 <p className="text-base font-bold font-mono text-gray-900">{d.dominio}</p>
                 <p className="text-sm text-gray-500">{d.cuadra}</p>

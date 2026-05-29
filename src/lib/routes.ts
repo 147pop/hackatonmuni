@@ -13,6 +13,7 @@ export const ROUTES = {
     pagar: '/portal/pagar',
     deudas: '/portal/deudas',
   },
+  pagar: (permisionarioId: string) => `/pagar/${permisionarioId}`,
   permisionario: {
     root: '/permisionario',
     registrar: '/permisionario/registrar',

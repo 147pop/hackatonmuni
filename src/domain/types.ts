@@ -147,6 +147,14 @@ export interface Emergencia {
   notas?: string;
 }
 
+export interface VehiculoObservado {
+  id: string;
+  dominio: string;
+  permisionarioId: string;
+  cuadra: string;
+  timestamp: string;
+}
+
 export interface Liquidacion {
   id: string;
   permisionarioId: string;

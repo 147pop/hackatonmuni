@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { QrCode, Car, Bike, Clock, ArrowLeft, CheckCircle, ArrowRight } from 'lucide-react';
+import { Car, Bike, Clock, ArrowLeft, CheckCircle, MapPin } from 'lucide-react';
 import { PlateInput } from './plate-input';
 import { MercadoPagoSimulator } from './mercadopago-simulator';
 import { calcularMonto, calcularVencimiento } from '@/domain/calculations';
@@ -21,8 +21,7 @@ const DURACIONES = [
 ];
 
 type Step =
-  | { type: 'qr' }
-  | { type: 'datos'; permisionarioId: string; cuadra: string; zonaId: string }
+  | { type: 'datos' }
   | { type: 'pago'; permisionarioId: string; cuadra: string; zonaId: string; dominio: string; vehiculoTipo: VehicleType; duracion: number; monto: number }
   | { type: 'confirmado'; ticket: Ticket };
 
@@ -34,52 +33,15 @@ interface PaymentWizardProps {
 }
 
 export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onComplete }: PaymentWizardProps) {
-  const [step, setStep] = useState<Step>({ type: 'qr' });
+  const [step, setStep] = useState<Step>({ type: 'datos' });
   const [error, setError] = useState('');
 
-  // ── Step 1: QR / select permisionario ─────────────────────────────────────
-  if (step.type === 'qr') {
-    const permisionarios = permisionarioStore.getAll().filter((p) => p.activo);
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
-          <QrCode className="w-4 h-4 flex-shrink-0" />
-          <span>Escaneá el QR del permisionario o seleccionalo de la lista</span>
-          <span className="ml-auto text-xs font-mono bg-amber-100 px-1.5 py-0.5 rounded">[SIMULACION]</span>
-        </div>
-        <div className="space-y-2">
-          {permisionarios.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setStep({ type: 'datos', permisionarioId: p.id, cuadra: p.cuadraAsignada, zonaId: p.zonaId })}
-              className="w-full text-left btn-xl bg-white border-2 border-gray-200 hover:border-municipal-400 rounded-2xl px-5 flex items-center gap-4 transition-all"
-            >
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-700 text-xl font-bold flex-shrink-0">
-                {p.nombre[0]}
-              </div>
-              <div className="flex-1">
-                <p className="text-base font-bold text-gray-900">{p.nombre} {p.apellido}</p>
-                <p className="text-sm text-gray-500">{p.cuadraAsignada} · Legajo {p.legajo}</p>
-              </div>
-              <ArrowRight className="w-4 h-4 text-gray-400" />
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // ── Step 2: Vehicle data + duration ───────────────────────────────────────
   if (step.type === 'datos') {
     return (
       <DatosStep
-        permisionarioId={step.permisionarioId}
-        cuadra={step.cuadra}
-        zonaId={step.zonaId}
         dominioDefault={dominioDefault}
-        onBack={() => setStep({ type: 'qr' })}
-        onNext={(dominio, vehiculoTipo, duracion, monto) =>
-          setStep({ type: 'pago', permisionarioId: step.permisionarioId, cuadra: step.cuadra, zonaId: step.zonaId, dominio, vehiculoTipo, duracion, monto })
+        onNext={(dominio, cuadra, zonaId, permisionarioId, vehiculoTipo, duracion, monto) =>
+          setStep({ type: 'pago', permisionarioId, cuadra, zonaId, dominio, vehiculoTipo, duracion, monto })
         }
         error={error}
         setError={setError}
@@ -87,7 +49,6 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
     );
   }
 
-  // ── Step 3: Payment ────────────────────────────────────────────────────────
   if (step.type === 'pago') {
     const { permisionarioId, cuadra, dominio, vehiculoTipo, duracion, monto } = step;
 
@@ -128,12 +89,15 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
 
     return (
       <div className="space-y-4">
-        <button onClick={() => setStep({ type: 'datos', permisionarioId, cuadra, zonaId: step.zonaId })} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
+        <button
+          onClick={() => setStep({ type: 'datos' })}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+        >
           <ArrowLeft className="w-4 h-4" /> Volver
         </button>
         <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
-          <Row label="Cuadra" value={cuadra} />
           <Row label="Dominio" value={dominio} />
+          <Row label="Cuadra" value={cuadra} />
           <Row label="Vehículo" value={vehiculoTipo === 'auto' ? 'Auto' : 'Moto'} />
           <Row label="Duración" value={`${duracion} min`} />
           <Row label="Descuento digital" value="-20%" highlight />
@@ -152,7 +116,6 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
     );
   }
 
-  // ── Step 4: Confirmed ──────────────────────────────────────────────────────
   const ticket = step.ticket;
   return (
     <div className="text-center space-y-4 py-4">
@@ -169,11 +132,17 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
       </div>
       <div className="space-y-2">
         {ticketLinkFn && (
-          <Link href={ticketLinkFn(ticket.id)} className="btn-xl bg-municipal-600 hover:bg-municipal-700 text-white block text-center">
+          <Link
+            href={ticketLinkFn(ticket.id)}
+            className="btn-xl bg-municipal-600 hover:bg-municipal-700 text-white block text-center"
+          >
             Ver ticket activo
           </Link>
         )}
-        <button onClick={() => setStep({ type: 'qr' })} className="btn-xl bg-gray-100 hover:bg-gray-200 text-gray-700 w-full">
+        <button
+          onClick={() => setStep({ type: 'datos' })}
+          className="btn-xl bg-gray-100 hover:bg-gray-200 text-gray-700 w-full"
+        >
           Nuevo pago
         </button>
       </div>
@@ -181,64 +150,111 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
   );
 }
 
-// ── Sub-component: datos step ──────────────────────────────────────────────
-
 interface DatosStepProps {
-  permisionarioId: string;
-  cuadra: string;
-  zonaId: string;
   dominioDefault?: string;
-  onBack: () => void;
-  onNext: (dominio: string, tipo: VehicleType, duracion: number, monto: number) => void;
+  onNext: (
+    dominio: string,
+    cuadra: string,
+    zonaId: string,
+    permisionarioId: string,
+    tipo: VehicleType,
+    duracion: number,
+    monto: number,
+  ) => void;
   error: string;
   setError: (e: string) => void;
 }
 
-function DatosStep({ cuadra, zonaId, dominioDefault, onBack, onNext, error, setError }: DatosStepProps) {
+function DatosStep({ dominioDefault, onNext, error, setError }: DatosStepProps) {
   const [dominio, setDominio] = useState(dominioDefault ?? '');
   const [dominioValido, setDominioValido] = useState(!!dominioDefault);
+  const [selectedCuadra, setSelectedCuadra] = useState('');
   const [vehiculoTipo, setVehiculoTipo] = useState<VehicleType>('auto');
   const [duracion, setDuracion] = useState(60);
 
+  const zonas = configStore.getZonas();
   const tarifa = configStore.getTarifa();
   const monto = calcularMonto({ tipo: vehiculoTipo, duracionMinutos: duracion, metodoPago: 'digital', tarifa });
+  const isValid = dominioValido && !!selectedCuadra;
 
   function handleNext() {
     setError('');
     if (!dominioValido) { setError('Ingresá un dominio válido.'); return; }
+    if (!selectedCuadra) { setError('Seleccioná dónde estacionaste.'); return; }
+
+    const zona = zonas.find((z) => z.cuadras.includes(selectedCuadra));
+    if (!zona) return;
 
     const horarioCheck = esHorarioPermitido({
       timestamp: new Date(),
-      zonaId,
-      zonas: configStore.getZonas(),
+      zonaId: zona.id,
+      zonas,
       feriados: configStore.getFeriados(),
       config: configStore.getConfig(),
     });
     if (!horarioCheck.permitido) { setError(`Fuera de horario: ${horarioCheck.razon}`); return; }
 
-    onNext(dominio, vehiculoTipo, duracion, monto);
+    const permisionario =
+      permisionarioStore.getAll().find((p) => p.cuadraAsignada === selectedCuadra && p.activo) ??
+      permisionarioStore.getAll().find((p) => p.activo);
+
+    onNext(dominio, selectedCuadra, zona.id, permisionario?.id ?? 'sistema', vehiculoTipo, duracion, monto);
   }
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg hover:bg-gray-100">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </button>
-        <div>
-          <p className="text-base font-bold text-gray-900">{cuadra}</p>
-          <p className="text-sm text-gray-500">Pago digital · Descuento 20%</p>
-        </div>
+      {/* Plate */}
+      <PlateInput
+        value={dominio}
+        onChange={setDominio}
+        onValidChange={setDominioValido}
+        label="Patente del vehículo"
+      />
+
+      {/* Cuadra selector */}
+      <div className="space-y-3">
+        <label className="block text-base font-semibold text-gray-700">
+          <MapPin className="w-4 h-4 inline mr-1.5 mb-0.5" />
+          ¿Dónde estacionaste?
+        </label>
+        {zonas.map((zona) => (
+          <div key={zona.id}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{zona.nombre}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {zona.cuadras.map((cuadra) => (
+                <button
+                  key={cuadra}
+                  type="button"
+                  onClick={() => setSelectedCuadra(cuadra)}
+                  className={`py-3 px-3 text-sm font-medium rounded-xl border-2 text-left transition-all ${
+                    selectedCuadra === cuadra
+                      ? 'bg-municipal-600 border-municipal-600 text-white'
+                      : 'bg-white border-gray-200 text-gray-700 hover:border-municipal-400'
+                  }`}
+                >
+                  {cuadra}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
-      <PlateInput value={dominio} onChange={setDominio} onValidChange={setDominioValido} />
-
+      {/* Vehicle type */}
       <div className="space-y-2">
         <label className="block text-base font-semibold text-gray-700">Tipo de vehículo</label>
         <div className="grid grid-cols-2 gap-3">
           {(['auto', 'moto'] as VehicleType[]).map((t) => (
-            <button key={t} type="button" onClick={() => setVehiculoTipo(t)}
-              className={`btn-xl flex items-center justify-center gap-3 border-2 transition-all ${vehiculoTipo === t ? 'bg-municipal-600 border-municipal-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'}`}>
+            <button
+              key={t}
+              type="button"
+              onClick={() => setVehiculoTipo(t)}
+              className={`btn-xl flex items-center justify-center gap-3 border-2 transition-all ${
+                vehiculoTipo === t
+                  ? 'bg-municipal-600 border-municipal-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'
+              }`}
+            >
               {t === 'auto' ? <Car className="w-5 h-5" /> : <Bike className="w-5 h-5" />}
               {t === 'auto' ? 'Auto' : 'Moto'}
             </button>
@@ -246,20 +262,31 @@ function DatosStep({ cuadra, zonaId, dominioDefault, onBack, onNext, error, setE
         </div>
       </div>
 
+      {/* Duration */}
       <div className="space-y-2">
-        <label className="block text-base font-semibold text-gray-700 flex items-center gap-2">
-          <Clock className="w-4 h-4" /> Duración
+        <label className="block text-base font-semibold text-gray-700">
+          <Clock className="w-4 h-4 inline mr-1.5 mb-0.5" />
+          Duración
         </label>
         <div className="grid grid-cols-3 gap-2">
           {DURACIONES.map((d) => (
-            <button key={d.minutos} type="button" onClick={() => setDuracion(d.minutos)}
-              className={`py-3 px-2 text-base font-medium rounded-xl border-2 transition-all ${duracion === d.minutos ? 'bg-municipal-600 border-municipal-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'}`}>
+            <button
+              key={d.minutos}
+              type="button"
+              onClick={() => setDuracion(d.minutos)}
+              className={`py-3 px-2 text-sm font-medium rounded-xl border-2 transition-all ${
+                duracion === d.minutos
+                  ? 'bg-municipal-600 border-municipal-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'
+              }`}
+            >
               {d.label}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Price */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex justify-between items-center">
           <span className="text-sm text-blue-700">Total con descuento 20%</span>
@@ -267,10 +294,15 @@ function DatosStep({ cuadra, zonaId, dominioDefault, onBack, onNext, error, setE
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl">{error}</p>}
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl">{error}</p>
+      )}
 
-      <button onClick={handleNext} disabled={!dominioValido}
-        className="btn-xl bg-municipal-600 hover:bg-municipal-700 disabled:bg-gray-300 text-white w-full">
+      <button
+        onClick={handleNext}
+        disabled={!isValid}
+        className="btn-xl bg-municipal-600 hover:bg-municipal-700 disabled:bg-gray-200 disabled:text-gray-400 text-white w-full"
+      >
         Continuar al pago
       </button>
     </div>

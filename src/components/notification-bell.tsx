@@ -30,7 +30,6 @@ export function NotificationBell() {
   function handleOpen() {
     setOpen((o) => !o);
     if (!open) {
-      // Mark all read after viewing
       setTimeout(() => {
         notificationStore.markAllRead();
         setNotifications(notificationStore.getAll().slice(0, 8));
@@ -39,10 +38,10 @@ export function NotificationBell() {
   }
 
   const TIPO_ICON: Record<AppNotification['tipo'], string> = {
-    pago:       '💰',
-    vencimiento:'⏰',
-    emergencia: '🚨',
-    info:       'ℹ️',
+    pago:        '💰',
+    vencimiento: '⏰',
+    emergencia:  '🚨',
+    info:        'ℹ️',
   };
 
   return (
@@ -50,47 +49,93 @@ export function NotificationBell() {
       <button
         onClick={handleOpen}
         aria-label="Notificaciones"
-        className="relative p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+        className="relative p-2 rounded-lg transition-colors"
+        style={{ color: 'rgba(255,255,255,0.8)' }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
       >
         <Bell className="w-5 h-5" />
         {unread > 0 && (
-          <span className="absolute top-1 right-1 min-w-[1rem] h-4 bg-red-500 rounded-full text-xs font-bold flex items-center justify-center px-0.5 leading-none">
+          <span
+            className="absolute top-1 right-1 min-w-[16px] h-4 rounded-full text-xs font-bold flex items-center justify-center px-0.5 leading-none"
+            style={{ background: 'var(--azul-vivo)', color: '#fff', fontFamily: 'var(--font-display)' }}
+          >
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 w-76 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" style={{ width: '18rem' }}>
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div
+          className="absolute right-0 top-11 z-50 overflow-hidden"
+          style={{
+            width: '18rem',
+            background: '#fff',
+            borderRadius: 16,
+            boxShadow: '0 8px 32px rgba(21,50,111,0.18)',
+            border: '1px solid var(--linea)',
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--linea)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
             <div>
-              <p className="text-sm font-bold text-gray-900">Notificaciones</p>
-              <p className="text-xs text-gray-400">[SIMULACION] — solo in-app</p>
+              <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, color: 'var(--tinta)' }}>
+                Notificaciones
+              </p>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--gris)' }}>
+                [SIMULACIÓN] — solo in-app
+              </p>
             </div>
             {unread > 0 && (
-              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">{unread} nueva{unread !== 1 ? 's' : ''}</span>
+              <span style={{
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11,
+                background: 'rgba(1,92,180,0.1)', color: 'var(--azul-vivo)',
+                padding: '2px 8px', borderRadius: 999,
+              }}>
+                {unread} nueva{unread !== 1 ? 's' : ''}
+              </span>
             )}
           </div>
 
+          {/* Body */}
           {notifications.length === 0 ? (
-            <div className="py-8 text-center">
-              <Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">Sin notificaciones</p>
+            <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+              <Bell className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--linea)' }} />
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--gris)' }}>
+                Sin notificaciones
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
+            <div style={{ maxHeight: 280, overflowY: 'auto' }}>
               {notifications.map((n) => (
-                <div key={n.id} className={`px-4 py-3 ${!n.leida ? 'bg-blue-50' : 'bg-white'}`}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-base flex-shrink-0 mt-0.5">{TIPO_ICON[n.tipo]}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900">{n.titulo}</p>
-                      <p className="text-xs text-gray-500 truncate">{n.mensaje}</p>
-                      <p className="text-xs text-gray-300 mt-0.5">
+                <div
+                  key={n.id}
+                  style={{
+                    padding: '10px 16px',
+                    borderBottom: '1px solid var(--linea)',
+                    background: !n.leida ? 'rgba(1,92,180,0.04)' : '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{TIPO_ICON[n.tipo]}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13, color: 'var(--tinta)' }}>
+                        {n.titulo}
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--gris)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {n.mensaje}
+                      </p>
+                      <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(104,104,104,0.6)', marginTop: 2 }}>
                         {new Date(n.timestamp).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
-                    {!n.leida && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5" />}
+                    {!n.leida && (
+                      <span style={{ width: 8, height: 8, background: 'var(--azul-vivo)', borderRadius: '50%', flexShrink: 0, marginTop: 4 }} />
+                    )}
                   </div>
                 </div>
               ))}
