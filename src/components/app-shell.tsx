@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Car, Globe, User, Building2, LayoutDashboard, QrCode, FileText, AlertTriangle, DollarSign, Settings } from 'lucide-react';
+import { Car, Globe, User, Building2, LayoutDashboard, QrCode, FileText, AlertTriangle, DollarSign, Settings, BarChart3, CreditCard, MapPin, Clock } from 'lucide-react';
 import { RoleSwitcher } from './role-switcher';
 import { ROUTES } from '@/lib/routes';
 
@@ -47,15 +47,18 @@ function getAdminNav(): NavItem[] {
 
 function getAdminSidebarNav(): NavItem[] {
   return [
-    { href: ROUTES.admin.root,           label: 'Inicio',          icon: <LayoutDashboard className="w-5 h-5" /> },
-    { href: ROUTES.admin.permisionarios, label: 'Permisionarios',  icon: <User className="w-5 h-5" /> },
-    { href: ROUTES.admin.liquidaciones,  label: 'Liquidaciones',   icon: <DollarSign className="w-5 h-5" /> },
+    { href: ROUTES.admin.root,           label: 'Dashboard',       icon: <LayoutDashboard className="w-4 h-4" /> },
+    { href: ROUTES.admin.permisionarios, label: 'Permisionarios',  icon: <User className="w-4 h-4" /> },
+    { href: ROUTES.admin.liquidaciones,  label: 'Liquidaciones',   icon: <DollarSign className="w-4 h-4" /> },
+    { href: ROUTES.admin.reportes,       label: 'Reportes',        icon: <BarChart3 className="w-4 h-4" /> },
+    { href: ROUTES.admin.pagos,          label: 'Pagos',           icon: <CreditCard className="w-4 h-4" /> },
+    { href: ROUTES.admin.deudas,         label: 'Deudas',          icon: <AlertTriangle className="w-4 h-4" /> },
+    { href: ROUTES.admin.auditoria,      label: 'Auditoría',       icon: <FileText className="w-4 h-4" /> },
+    { href: ROUTES.admin.alertas,        label: 'Alertas',         icon: <AlertTriangle className="w-4 h-4" /> },
     { href: ROUTES.admin.tarifas,        label: 'Tarifas',         icon: <DollarSign className="w-4 h-4" /> },
-    { href: ROUTES.admin.zonas,          label: 'Zonas',           icon: <Settings className="w-4 h-4" /> },
+    { href: ROUTES.admin.zonas,          label: 'Zonas',           icon: <MapPin className="w-4 h-4" /> },
     { href: ROUTES.admin.feriados,       label: 'Feriados',        icon: <Settings className="w-4 h-4" /> },
-    { href: ROUTES.admin.normativa,      label: 'Normativa',       icon: <Settings className="w-4 h-4" /> },
-    { href: ROUTES.admin.reportes,       label: 'Reportes',        icon: <FileText className="w-5 h-5" /> },
-    { href: ROUTES.admin.alertas,        label: 'Alertas',         icon: <AlertTriangle className="w-5 h-5" /> },
+    { href: ROUTES.admin.normativa,      label: 'Normativa',       icon: <Clock className="w-4 h-4" /> },
   ];
 }
 
