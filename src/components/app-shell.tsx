@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Car, Globe, User, Building2, LayoutDashboard, QrCode, FileText, AlertTriangle, DollarSign, Settings, BarChart3, CreditCard, MapPin, Clock } from 'lucide-react';
 import { RoleSwitcher } from './role-switcher';
+import { NotificationBell } from './notification-bell';
 import { ROUTES } from '@/lib/routes';
 
 interface NavItem {
@@ -100,7 +101,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="hidden sm:inline">SEM Digital</span>
             <span className="sm:hidden">SEM</span>
           </Link>
-          <RoleSwitcher />
+          <div className="flex items-center gap-1">
+            {(pathname.startsWith('/permisionario') || pathname.startsWith('/conductor')) && (
+              <NotificationBell />
+            )}
+            <RoleSwitcher />
+          </div>
         </div>
       </header>
 
