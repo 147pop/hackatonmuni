@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Car, Globe, User, Building2, LayoutDashboard, QrCode, FileText, AlertTriangle } from 'lucide-react';
+import { Car, Globe, User, Building2, LayoutDashboard, QrCode, FileText, AlertTriangle, DollarSign, Settings } from 'lucide-react';
 import { RoleSwitcher } from './role-switcher';
 import { ROUTES } from '@/lib/routes';
 
@@ -38,10 +38,24 @@ function getPermisionarioNav(): NavItem[] {
 
 function getAdminNav(): NavItem[] {
   return [
-    { href: ROUTES.admin.root, label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { href: ROUTES.admin.permisionarios, label: 'Permisionarios', icon: <User className="w-5 h-5" /> },
-    { href: ROUTES.admin.reportes, label: 'Reportes', icon: <FileText className="w-5 h-5" /> },
-    { href: ROUTES.admin.alertas, label: 'Alertas', icon: <AlertTriangle className="w-5 h-5" /> },
+    { href: ROUTES.admin.root,           label: 'Inicio',          icon: <LayoutDashboard className="w-5 h-5" /> },
+    { href: ROUTES.admin.permisionarios, label: 'Permisionarios',  icon: <User className="w-5 h-5" /> },
+    { href: ROUTES.admin.liquidaciones,  label: 'Liquidaciones',   icon: <DollarSign className="w-5 h-5" /> },
+    { href: ROUTES.admin.tarifas,        label: 'Configuración',   icon: <Settings className="w-5 h-5" /> },
+  ];
+}
+
+function getAdminSidebarNav(): NavItem[] {
+  return [
+    { href: ROUTES.admin.root,           label: 'Inicio',          icon: <LayoutDashboard className="w-5 h-5" /> },
+    { href: ROUTES.admin.permisionarios, label: 'Permisionarios',  icon: <User className="w-5 h-5" /> },
+    { href: ROUTES.admin.liquidaciones,  label: 'Liquidaciones',   icon: <DollarSign className="w-5 h-5" /> },
+    { href: ROUTES.admin.tarifas,        label: 'Tarifas',         icon: <DollarSign className="w-4 h-4" /> },
+    { href: ROUTES.admin.zonas,          label: 'Zonas',           icon: <Settings className="w-4 h-4" /> },
+    { href: ROUTES.admin.feriados,       label: 'Feriados',        icon: <Settings className="w-4 h-4" /> },
+    { href: ROUTES.admin.normativa,      label: 'Normativa',       icon: <Settings className="w-4 h-4" /> },
+    { href: ROUTES.admin.reportes,       label: 'Reportes',        icon: <FileText className="w-5 h-5" /> },
+    { href: ROUTES.admin.alertas,        label: 'Alertas',         icon: <AlertTriangle className="w-5 h-5" /> },
   ];
 }
 
@@ -51,6 +65,11 @@ function getNavForPath(pathname: string): NavItem[] {
   if (pathname.startsWith('/permisionario')) return getPermisionarioNav();
   if (pathname.startsWith('/admin')) return getAdminNav();
   return [];
+}
+
+function getSidebarNavForPath(pathname: string): NavItem[] {
+  if (pathname.startsWith('/admin')) return getAdminSidebarNav();
+  return getNavForPath(pathname);
 }
 
 function getAreaColor(pathname: string): string {
@@ -64,6 +83,7 @@ function getAreaColor(pathname: string): string {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const navItems = getNavForPath(pathname);
+  const sidebarItems = getSidebarNavForPath(pathname);
   const isHome = pathname === '/';
   const areaColor = getAreaColor(pathname);
 
@@ -83,9 +103,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Desktop sidebar + content */}
       <div className="flex flex-1">
-        {!isHome && navItems.length > 0 && (
-          <nav className="hidden md:flex flex-col w-56 bg-gray-50 border-r border-gray-200 py-4 gap-1 px-2">
-            {navItems.map((item) => (
+        {!isHome && sidebarItems.length > 0 && (
+          <nav className="hidden md:flex flex-col w-56 bg-gray-50 border-r border-gray-200 py-4 gap-0.5 px-2">
+            {sidebarItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
