@@ -210,9 +210,9 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 
 ---
 
-## Sprint 3: Conductor + Portal Publico — Flujos de Pago
+## Sprint 3: Conductor + Portal Publico + Deteccion de Tiempo Excedido
 
-**Objetivo:** Flujos de pago digital del conductor registrado (via web SEM) y del conductor sin cuenta (via portal publico), consulta/pago de deudas.
+**Objetivo:** Flujos de pago digital del conductor registrado y del conductor sin cuenta, consulta/pago de deudas, y deteccion/cobro de tiempo excedido (overstay) para el permisionario.
 
 **Modulos SRS:** RF-PAG-01 a RF-PAG-04, RF-PAG-07 a RF-PAG-10, RF-PAG-12, RF-USR-01, RF-USR-03 a RF-USR-08, RF-PAT-06 a RF-PAT-09, RF-EME-02, RF-EME-04, RF-EST-01, RF-EST-05.
 
@@ -250,16 +250,30 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 
 13. **Consulta deudas publica** — ingresar dominio, ver deudas pendientes, pagar via simulacion MP (RF-PAT-07, RF-PAT-08).
 
+### Tareas — Deteccion y Cobro de Tiempo Excedido (Overstay)
+
+14. **Extension del modelo Deuda** — agregar campos opcionales a `Deuda` en `types.ts`: `tipo: 'incumplimiento' | 'hora_extra'` (undefined = backwards compat), `ticketOriginalId?: string`, `vencimientoOriginal?: string`, `minutosExcedidos?: number`. Sin romper datos existentes en localStorage.
+
+15. **Monitor de cuadra en vivo** — nueva seccion en el dashboard del permisionario. Polling con `setInterval` cada 30s via `useEffect`. Muestra dos listas: "Activos" (tickets vigentes con countdown) y "Vencidos — en cuadra?" (tickets cuyo `vencimiento < now` y `activo: true`). Para cada vencido: tiempo transcurrido desde el vencimiento, dos acciones: "Ya se fue" y "Cobrar hora extra". "Ya se fue" cierra el ticket (`activo: false`) sin generar deuda. Usa `calcularTiempoRestanteMinutos` y `estaProximoAVencer` ya existentes en `calculations.ts` y `rules.ts`. Badge de alerta en nav cuando hay vencidos sin resolver.
+
+16. **Flujo "Cobrar hora extra"** — nueva page `/permisionario/hora-extra`. Acepta pre-fill de dominio y `ticketOriginalId` via query params (navegacion desde el monitor). Si llega con datos: muestra resumen del ticket original (pagado cuanto, vencio cuando, minutos excedidos al momento de registrar). Si llega sin datos: plate-input manual + busqueda del ultimo ticket activo/vencido de esa patente en la cuadra. Genera `Deuda` con `tipo: 'hora_extra'`, `ticketOriginalId`, `vencimientoOriginal`, `minutosExcedidos`. Monto = 1 hora tarifa plena sin descuento digital (mismo criterio que `calcularMontoDeuda`). El conductor puede pagar la deuda desde el portal/app conductor igual que cualquier otra deuda.
+
+17. **Historial por dominio en `/permisionario/actividad`** — agregar vista "buscar patente" en la pagina de actividad existente. Input con plate-input, muestra timeline unificado de `ticketStore.getByDominio() + deudaStore.getByDominio()` ordenado por timestamp descendente. Cada entrada muestra tipo (ticket normal / hora extra / incumplimiento), monto, estado y referencia cruzada (deuda tipo hora_extra muestra link al ticket original). Sin nuevo modelo — solo lectura cross-store.
+
 ### Archivos
 
+- `src/domain/types.ts` — extender `Deuda` con campos opcionales de overstay
 - `src/app/conductor/page.tsx`, `src/app/conductor/registro/page.tsx`
 - `src/app/conductor/pagar/page.tsx`, `src/app/conductor/ticket/[ticketId]/page.tsx`
 - `src/app/conductor/historial/page.tsx`, `src/app/conductor/deudas/page.tsx`
 - `src/app/portal/page.tsx`, `src/app/portal/pagar/page.tsx`, `src/app/portal/deudas/page.tsx`
+- `src/app/permisionario/hora-extra/page.tsx` — nuevo
+- `src/components/cuadra-monitor.tsx` — nuevo (monitor de cuadra en vivo)
 - `src/components/payment-summary.tsx`, `src/components/ticket-card.tsx`
 - `src/components/mercadopago-simulator.tsx`, `src/components/debt-list.tsx`
 - `src/components/time-remaining.tsx`
 - `tests/e2e/conductor-payment.spec.ts`, `tests/e2e/public-portal.spec.ts`
+- `tests/e2e/overstay.spec.ts` — nuevo
 
 ### Tests
 
@@ -267,6 +281,10 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 - E2E: portal publico paga sin cuenta y puede consultar ticket/deuda por dominio.
 - E2E: extension de tiempo antes de vencimiento.
 - E2E: ticket muestra eligibilidad de transferencia entre cuadras.
+- E2E overstay: permisionario ve ticket vencido en monitor → "Cobrar hora extra" → deuda creada con `tipo='hora_extra'` y `ticketOriginalId` correcto.
+- E2E overstay: "Ya se fue" → ticket cierra (`activo: false`), no se crea deuda.
+- E2E overstay: historial por patente muestra ticket + deuda hora_extra vinculados.
+- Unit: `Deuda` con campos overstay opcionales no rompe tests existentes.
 - Regresion: tests de dominio del Sprint 1 siguen pasando.
 
 ### Criterios de Aceptacion
@@ -277,6 +295,9 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 - Portal no requiere creacion de cuenta.
 - Flujo MP directo (A.5) esta representado aunque simplificado.
 - Pagos actualizan totales de admin y actividad del permisionario via estado compartido.
+- Monitor de cuadra se actualiza cada 30s sin recargar la pagina.
+- Deuda de hora extra aparece en historial del conductor como deuda pagable normalmente.
+- Extension de `Deuda` es backwards compatible — datos de seed y deudas pre-existentes funcionan sin migracion.
 
 ---
 
@@ -361,6 +382,8 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 
 8. **Indicadores de rendimiento** — tiempo promedio de transaccion, ratio pagos digitales vs efectivo, tasa de incumplimiento (RF-ADM-10).
 
+9. **Panel de overstay en admin** — seccion "Tiempo Excedido" en el dashboard admin. Metricas derivadas del store sin hardcodear: tickets activos cuyo `vencimiento < now` (no cerrados aun), deudas por `tipo` (incumplimiento vs hora_extra), tiempo promedio de excedencia en deudas con `minutosExcedidos`. Tabla de deudas filtrables por tipo con columna "ticket original" que linkea al ticket vinculado cuando `ticketOriginalId` existe. Permite al admin detectar patrones (permisionarios que no cierran tickets, zonas con alta tasa de overstay).
+
 ### Archivos
 
 - `src/app/admin/page.tsx` (dashboard)
@@ -371,6 +394,7 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 - `src/components/admin/payments-table.tsx`, `src/components/admin/debts-table.tsx`
 - `src/components/admin/audit-log.tsx`, `src/components/admin/alerts-panel.tsx`
 - `src/components/admin/performance-indicators.tsx`
+- `src/components/admin/overstay-panel.tsx` — nuevo
 - `tests/e2e/admin-dashboard.spec.ts`
 
 ### Tests
@@ -379,6 +403,7 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 - E2E: alerta de panico del permisionario aparece en panel de alertas admin.
 - E2E: indicadores de rendimiento calculan correctamente desde datos del store.
 - E2E: filtros de reportes producen resultados coherentes.
+- E2E: panel overstay muestra deudas tipo hora_extra separadas de incumplimientos; ticket original linkeable.
 
 ### Criterios de Aceptacion
 
@@ -387,6 +412,7 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 - Log de auditoria muestra entradas de acciones de todos los sprints anteriores.
 - Indicadores de rendimiento se actualizan al ocurrir nuevas transacciones.
 - Panel admin da una demo creible de la operacion SEM en tiempo real.
+- Panel overstay distingue visualmente incumplimiento (no pago) de hora_extra (pago insuficiente).
 
 ---
 
@@ -477,3 +503,13 @@ Sprint 1 (Modelo de Dominio + Mock Backend)
 | Reglas normativas configurables (RF-NOR-07, RF-NOR-08) | Sprint 4, tarea 7 |
 | Liquidacion admin (RF-ADM-11) | Sprint 4, tarea 6 |
 | Resumen diario permisionario (RF-PER-07) | Sprint 2, tarea 9 |
+
+### Features de overstay — agregadas en sprint planning (2026-05-28)
+
+| Feature | Sprint | Opcion |
+|---------|--------|--------|
+| Extension modelo `Deuda` con tipo/ticketOriginalId/minutosExcedidos | Sprint 3, tarea 14 | Opcion 2 |
+| Monitor de cuadra en vivo con countdown y alertas de vencidos | Sprint 3, tarea 15 | Opcion 1 |
+| Flujo "Cobrar hora extra" desde monitor o busqueda manual | Sprint 3, tarea 16 | Opcion 3 |
+| Historial por dominio con timeline tickets + deudas cross-store | Sprint 3, tarea 17 | Opcion 4 |
+| Panel overstay en admin (metricas, tabla filtrables, link ticket original) | Sprint 5, tarea 9 | Opcion 4 |

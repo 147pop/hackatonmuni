@@ -17,6 +17,7 @@ export const ROUTES = {
     root: '/permisionario',
     registrar: '/permisionario/registrar',
     incumplimiento: '/permisionario/incumplimiento',
+    horaExtra: '/permisionario/hora-extra',
     actividad: '/permisionario/actividad',
     credencial: '/permisionario/credencial',
   },

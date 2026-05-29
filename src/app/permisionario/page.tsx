@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, Clock, CreditCard, AlertTriangle, IdCard, ArrowRight } from 'lucide-react';
+import { MapPin, Clock, CreditCard, AlertTriangle, IdCard, ArrowRight, Timer } from 'lucide-react';
 import { permisionarioStore, roleStore, configStore } from '@/lib/sem-store';
 import { esHorarioPermitido } from '@/domain/rules';
 import { DailySummary } from '@/components/daily-summary';
 import { EmergencyActions } from '@/components/emergency-actions';
+import { CuadraMonitor } from '@/components/cuadra-monitor';
 import type { Permisionario } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
 
@@ -92,6 +93,13 @@ export default function PermisionarioPage() {
           </div>
           <ArrowRight className="w-5 h-5" />
         </Link>
+        <Link href={ROUTES.permisionario.horaExtra} className="flex items-center justify-between btn-xl bg-amber-500 hover:bg-amber-600 text-white rounded-2xl px-6">
+          <div className="flex items-center gap-3">
+            <Timer className="w-6 h-6" />
+            <span>Cobrar hora extra</span>
+          </div>
+          <ArrowRight className="w-5 h-5" />
+        </Link>
         <Link href={ROUTES.permisionario.credencial} className="flex items-center justify-between btn-xl bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 rounded-2xl px-6">
           <div className="flex items-center gap-3">
             <IdCard className="w-6 h-6" />
@@ -100,6 +108,9 @@ export default function PermisionarioPage() {
           <ArrowRight className="w-5 h-5" />
         </Link>
       </div>
+
+      {/* Live cuadra monitor — Sprint 3, task 15 */}
+      <CuadraMonitor permisionarioId={perm.id} cuadra={perm.cuadraAsignada} />
 
       {/* Daily summary */}
       <div className="space-y-3">

@@ -2,6 +2,7 @@ export type VehicleType = 'auto' | 'moto';
 export type PaymentMethod = 'efectivo' | 'digital';
 export type PaymentStatus = 'pending' | 'success' | 'failed';
 export type DebtStatus = 'pendiente' | 'pagada' | 'vencida';
+export type DebtType = 'incumplimiento' | 'hora_extra';
 export type UserRole = 'conductor' | 'portal' | 'permisionario' | 'admin';
 export type AdminRole = 'administrador' | 'supervisor' | 'consulta';
 export type EmergencyType = 'panico' | 'disputa';
@@ -126,6 +127,11 @@ export interface Deuda {
   estado: DebtStatus;
   pagadoAt?: string;
   pagoId?: string;
+  // Overstay fields (Sprint 3, task 14) — all optional for backwards compat
+  tipo?: DebtType;
+  ticketOriginalId?: string;
+  vencimientoOriginal?: string;
+  minutosExcedidos?: number;
 }
 
 export interface Emergencia {

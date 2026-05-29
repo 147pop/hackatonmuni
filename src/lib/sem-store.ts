@@ -2,6 +2,7 @@ import { storageGet, storageSet, storageClear } from './storage';
 import type {
   Permisionario,
   Conductor,
+  Vehiculo,
   Estacionamiento,
   Pago,
   Ticket,
@@ -179,6 +180,22 @@ export const permisionarioStore = {
   },
 };
 
+// ─── Vehiculos ─────────────────────────────────────────────────────────────
+
+export const vehiculoStore = {
+  getAll: (): Vehiculo[] => storageGet<Vehiculo[]>(K.vehiculos, SEED_VEHICULOS),
+  getByDominio: (dominio: string): Vehiculo | undefined =>
+    vehiculoStore.getAll().find((v) => v.dominio.toUpperCase() === dominio.toUpperCase()),
+  create: (data: Omit<Vehiculo, 'id'>): Vehiculo => {
+    const list = vehiculoStore.getAll();
+    const v: Vehiculo = { ...data, id: generateId() };
+    list.push(v);
+    storageSet(K.vehiculos, list);
+    addAudit('vehiculo_create', 'vehiculo', v.id, { dominio: v.dominio });
+    return v;
+  },
+};
+
 // ─── Conductores ───────────────────────────────────────────────────────────
 
 export const conductorStore = {
@@ -209,8 +226,14 @@ export const ticketStore = {
   getAll: (): Ticket[] => storageGet<Ticket[]>(K.tickets, []),
   getById: (id: string): Ticket | undefined => ticketStore.getAll().find((t) => t.id === id),
   getByDominio: (dominio: string): Ticket[] =>
-    ticketStore.getAll().filter((t) => t.dominio === dominio),
+    ticketStore.getAll().filter((t) => t.dominio.toUpperCase() === dominio.toUpperCase()),
   getActivos: (): Ticket[] => ticketStore.getAll().filter((t) => t.activo),
+  getActivosByDominio: (dominio: string): Ticket | undefined =>
+    ticketStore.getAll()
+      .filter((t) => t.activo && t.dominio.toUpperCase() === dominio.toUpperCase())
+      .sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime())[0],
+  getByPermisionarioCuadra: (permisionarioId: string, cuadra: string): Ticket[] =>
+    ticketStore.getAll().filter((t) => t.activo && t.permisionarioId === permisionarioId && t.cuadra === cuadra),
   create: (data: Omit<Ticket, 'id' | 'numero'>): Ticket => {
     const list = ticketStore.getAll();
     const t: Ticket = { ...data, id: generateId(), numero: nextTicketNumber() };
