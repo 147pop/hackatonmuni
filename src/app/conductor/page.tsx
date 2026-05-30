@@ -204,6 +204,29 @@ function ComprobantesView() {
 }
 
 function CuentaView() {
+  const [loadingMp, setLoadingMp] = useState(false);
+
+  const handlePago = async () => {
+    setLoadingMp(true);
+    try {
+      const res = await fetch('/api/mercadopago/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 1500, title: 'Deuda por Infracción #4829 - Municipalidad de Salta' })
+      });
+      const data = await res.json();
+      if (data.init_point) {
+        window.location.href = data.init_point; // Redirige a Mercado Pago
+      } else {
+        alert('Error conectando con Mercado Pago');
+      }
+    } catch (err) {
+      alert('Error en el servidor');
+    } finally {
+      setLoadingMp(false);
+    }
+  };
+
   return (
     <>
       <div className="adm-card" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16 }}>
@@ -211,13 +234,13 @@ function CuentaView() {
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, color: '#fff' }}>JP</span>
         </div>
         <div>
-          <h2 className="adm-name" style={{ fontSize: 18, marginTop: 0 }}>Juan Pérez</h2>
+          <h2 className="adm-name" style={{ fontSize: 18, margin: 0 }}>Juan Pérez</h2>
           <p className="adm-role">juan.perez@ejemplo.com</p>
         </div>
       </div>
 
-      <div className="adm-card" style={{ padding: '12px 14px', borderLeft: '4px solid #DC2626', marginTop: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="adm-card" style={{ padding: '16px 14px', borderLeft: '4px solid #DC2626', marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <AlertCircle className="w-5 h-5" style={{ color: '#DC2626' }} />
           </div>
@@ -225,8 +248,16 @@ function CuentaView() {
             <p className="adm-act-title" style={{ color: '#DC2626' }}>Deuda Pendiente</p>
             <p className="adm-act-sub">Infracción #4829</p>
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color: '#DC2626' }}>$1.500</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: '#DC2626' }}>$1.500</span>
         </div>
+        <button 
+          onClick={handlePago}
+          disabled={loadingMp}
+          className="adm-action-btn" 
+          style={{ background: '#009EE3', color: '#fff', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 14 }}
+        >
+          {loadingMp ? 'Conectando...' : 'Pagar con Mercado Pago'}
+        </button>
       </div>
 
       <div className="adm-card" style={{ marginTop: 8, padding: 0 }}>
