@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { MapContainer, TileLayer, ZoomControl, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -37,68 +37,151 @@ const cuadras = [
   { num: 700, startLon: -65.40413, endLon: -65.40295 }
 ];
 
-// Colores de ocupación
-const colorMap = {
-  alta: '#34c759',    // Verde (Alta disponibilidad)
-  media: '#ffcc00',   // Amarillo (Media disponibilidad)
-  baja: '#ff9500',    // Naranja (Baja disponibilidad)
-  saturada: '#ff3b30' // Rojo (Saturada)
+const colores = {
+  libre: '#34c759',
+  ocupado: '#ff3b30',
+  garaje: '#ff9500',
+  discapacitado: '#007aff',
+  especial: '#ffcc00'
 };
 
-// Genera un estado random simulado cada X segundos
-function getEstadoRandom() {
-  const r = Math.random();
-  if (r < 0.25) return 'alta';
-  if (r < 0.5) return 'media';
-  if (r < 0.75) return 'baja';
-  return 'saturada';
+function getTotalBoxes(cuadraNum: number, lado: string) {
+  if (cuadraNum === 700 && lado === 'norte') return 18;
+  if (cuadraNum === 700 && lado === 'sur') return 18;
+  if (cuadraNum === 800 && lado === 'norte') return 19;
+  if (cuadraNum === 800 && lado === 'sur') return 17;
+  if (cuadraNum === 900 && lado === 'norte') return 18;
+  if (cuadraNum === 900 && lado === 'sur') return 15;
+  return 15; 
 }
+
+function asignarTipoFijo(index: number, lado: string, cuadraNum: number) {
+  if (cuadraNum === 900 && lado === 'norte' && index === 9) return 'calle';
+  if (cuadraNum === 800 && lado === 'norte' && index === 12) return 'calle';
+  if (cuadraNum === 700 && lado === 'norte' && index === 5) return 'calle';
+
+  if (cuadraNum === 700 && lado === 'norte') {
+      if (index === 2 || index === 8 || index === 12) return 'garaje';
+      if (index === 17) return 'discapacitado';
+      if (index === 6 || index === 7) return 'especial';
+      if (index === 16) return 'especial';
+  }
+  if (cuadraNum === 700 && lado === 'sur') {
+      if (index === 4 || index === 9 || index === 14) return 'garaje';
+      if (index === 0) return 'discapacitado';
+      if (index === 1) return 'especial';
+  }
+  if (cuadraNum === 800 && lado === 'norte') {
+      if (index === 5 || index === 13 || index === 16) return 'garaje';
+      if (index === 18) return 'discapacitado';
+      if (index === 17) return 'especial';
+  }
+  if (cuadraNum === 800 && lado === 'sur') {
+      if (index === 8) return 'garaje';
+      if (index === 0 || index === 16) return 'discapacitado';
+      if (index === 14 || index === 15) return 'especial';
+      if (index === 1 || index === 2) return 'especial';
+  }
+  if (cuadraNum === 900 && lado === 'sur' && (index === 12 || index === 13 || index === 14)) return 'garaje';
+
+  return 'dinamico';
+}
+
+type Box = {
+  id: string; cuadra: number; lado: string; lonBase: number; lonSize: number;
+  estado: string; tipo: string;
+};
+
+// INITIAL BOXES
+const initialBoxes: Box[] = [];
+cuadras.forEach(cuadra => {
+  ['norte', 'sur'].forEach(lado => {
+      let totalBoxes = getTotalBoxes(cuadra.num, lado);
+      let espacioTotal = cuadra.endLon - cuadra.startLon;
+      let espacioPorBox = espacioTotal / totalBoxes;
+      let lonSizeLocal = espacioPorBox * 0.95;
+      let lonGapLocal = espacioPorBox * 0.05;
+      let currentLon = cuadra.startLon;
+      
+      for (let i = 0; i < totalBoxes; i++) {
+          let tipo = asignarTipoFijo(i, lado, cuadra.num);
+          initialBoxes.push({
+              id: `box-${cuadra.num}-${lado}-${i}`,
+              cuadra: cuadra.num, lado: lado, lonBase: currentLon, lonSize: lonSizeLocal,
+              estado: (tipo === 'dinamico') ? (Math.random() > 0.5 ? 'libre' : 'ocupado') : tipo,
+              tipo: tipo
+          });
+          currentLon += (lonSizeLocal + lonGapLocal);
+      }
+  });
+});
 
 function CuadrasLayer() {
   const map = useMap();
-  const [blocks, setBlocks] = useState(() => 
-    cuadras.flatMap(c => [
-      { id: `${c.num}-norte`, cuadra: c.num, lado: 'Norte', startLon: c.startLon, endLon: c.endLon, latOffset: -9, estado: getEstadoRandom() },
-      { id: `${c.num}-sur`, cuadra: c.num, lado: 'Sur', startLon: c.startLon, endLon: c.endLon, latOffset: 9, estado: getEstadoRandom() }
-    ])
-  );
+  const [boxes, setBoxes] = useState<Box[]>(initialBoxes);
+  const [zoomLevel, setZoomLevel] = useState(map.getZoom());
 
-  // Simulación en tiempo real
+  // Listen to zoom changes to re-calculate offsets if needed
   useEffect(() => {
-    const timer = setInterval(() => {
-      setBlocks(prev => prev.map(b => ({
-        ...b,
-        // Pequeña probabilidad de cambiar de estado
-        estado: Math.random() > 0.8 ? getEstadoRandom() : b.estado 
-      })));
-    }, 4000);
-    return () => clearInterval(timer);
+    const onZoom = () => setZoomLevel(map.getZoom());
+    map.on('zoomend', onZoom);
+    return () => { map.off('zoomend', onZoom); };
+  }, [map]);
+
+  // Simulación en vivo
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBoxes(prev => {
+        const next = [...prev];
+        const dinamicos = next.filter(b => b.tipo === 'dinamico');
+        if (dinamicos.length > 0) {
+          const cambios = Math.floor(Math.random() * 3) + 1;
+          for (let i = 0; i < cambios; i++) {
+            const randomIndex = Math.floor(Math.random() * dinamicos.length);
+            const box = dinamicos[randomIndex];
+            box.estado = box.estado === 'libre' ? 'ocupado' : 'libre';
+          }
+        }
+        return next;
+      });
+    }, 2500);
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <>
-      {blocks.map((block) => {
-        // Convert to latlngs using the curve function and map projection
-        let latCentro1 = getCentroLat(block.startLon);
-        let latCentro2 = getCentroLat(block.endLon);
-        
-        let p1 = map.project([latCentro1, block.startLon]);
-        let p2 = map.project([latCentro2, block.endLon]);
+      {boxes.map(box => {
+        if (box.estado === 'calle') return null;
 
-        p1.y += block.latOffset;
-        p2.y += block.latOffset;
+        let latCentro1 = getCentroLat(box.lonBase);
+        let latCentro2 = getCentroLat(box.lonBase + box.lonSize);
+        
+        let p1 = map.project([latCentro1, box.lonBase]);
+        let p2 = map.project([latCentro2, box.lonBase + box.lonSize]);
+
+        const pixelOffset = 6;
+        if (box.lado === 'norte') {
+            p1.y -= pixelOffset;
+            p2.y -= pixelOffset;
+        } else {
+            p1.y += pixelOffset;
+            p2.y += pixelOffset;
+        }
 
         let ll1 = map.unproject(p1);
         let ll2 = map.unproject(p2);
+        
+        const weight = zoomLevel >= 19 ? 5 : 4;
+        const color = colores[box.estado as keyof typeof colores] || colores.libre;
 
         return (
           <Polyline
-            key={block.id}
+            key={box.id}
             positions={[[ll1.lat, ll1.lng], [ll2.lat, ll2.lng]]}
-            color={colorMap[block.estado as keyof typeof colorMap]}
-            weight={7}
-            opacity={0.8}
-            pathOptions={{ lineCap: 'round' }}
+            color={color}
+            weight={weight}
+            opacity={1}
+            pathOptions={{ transition: 'stroke 0.6s ease' } as any}
           />
         );
       })}
@@ -112,42 +195,37 @@ export default function ConductorAvailabilityMap() {
   if (!mounted) return null;
 
   return (
-    <div className="w-full h-full bg-[#f1f5f9] relative">
+    <div className="w-full h-full bg-[#000] relative">
       <MapContainer
         center={[-24.80825, -65.4056]}
-        zoom={17}
-        style={{ height: '100%', width: '100%' }}
+        zoom={18}
+        style={{ height: '100%', width: '100%', background: '#000' }}
         zoomControl={false}
       >
-        {/* Mapa base oscuro para alto contraste como en index.html */}
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap'
+          maxZoom={22}
         />
         <ZoomControl position="bottomright" />
         <CuadrasLayer />
       </MapContainer>
 
-      {/* Referencias flotantes */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] bg-gray-900/90 backdrop-blur-md rounded-2xl p-3 flex flex-col gap-2 w-[90%] max-w-[340px] border border-white/10 shadow-2xl">
-        <p className="text-white text-xs font-bold uppercase tracking-wider text-center mb-1">Disponibilidad</p>
-        <div className="flex justify-between px-2 text-[10px] text-gray-300 font-medium">
-          <div className="flex flex-col items-center gap-1">
-            <span className="w-8 h-2.5 rounded-full" style={{ background: colorMap.alta }} />
-            <span>Alta</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="w-8 h-2.5 rounded-full" style={{ background: colorMap.media }} />
-            <span>Media</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="w-8 h-2.5 rounded-full" style={{ background: colorMap.baja }} />
-            <span>Baja</span>
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <span className="w-8 h-2.5 rounded-full" style={{ background: colorMap.saturada }} />
-            <span>Saturada</span>
-          </div>
+      {/* Panel Superior como index.html */}
+      <div className="absolute top-5 left-5 z-[1000] bg-[#0f141e]/85 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl w-[280px]">
+        <h1 className="text-white font-bold text-base tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>SALTA STREET LIVE</h1>
+        <p className="text-gray-400 text-[10px] uppercase mt-1">Monitor de Av. Independencia</p>
+      </div>
+
+      {/* Referencias como index.html */}
+      <div className="absolute bottom-6 left-5 z-[1000] bg-[#0f141e]/85 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl w-[280px]">
+        <h2 className="text-white text-xs font-semibold mb-3 border-b border-white/10 pb-2">REFERENCIAS DE ESTADO</h2>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.libre }}></div> Box Libre (6m) - Disponible</div>
+          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.ocupado }}></div> Box Ocupado (6m) - En uso</div>
+          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.garaje }}></div> Garaje / Prohibido Estacionar</div>
+          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.discapacitado }}></div> Reservado Discapacitados</div>
+          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.especial }}></div> Reservado Hoteles/Clínicas</div>
         </div>
       </div>
     </div>
