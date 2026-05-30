@@ -5,19 +5,20 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { permisionarioStore, roleStore } from '@/lib/sem-store';
-import { NonPaymentForm } from '@/components/non-payment-form';
-import type { Permisionario } from '@/domain/types';
+import { QRPaymentForm } from '@/components/qr-payment-form';
+import { notifyPagoEntrante } from '@/lib/mock-notifications';
+import type { Permisionario, Ticket } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
 
-export default function IncumplimientoPage() {
+export default function CobrarQrPage() {
   return (
     <Suspense fallback={<div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">Cargando…</div>}>
-      <IncumplimientoContent />
+      <CobrarQrContent />
     </Suspense>
   );
 }
 
-function IncumplimientoContent() {
+function CobrarQrContent() {
   const searchParams = useSearchParams();
   const dominioParam = searchParams.get('dominio') ?? '';
 
@@ -39,6 +40,10 @@ function IncumplimientoContent() {
     );
   }
 
+  function handleSuccess(ticket: Ticket) {
+    notifyPagoEntrante(ticket.dominio, ticket.monto);
+  }
+
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -46,16 +51,17 @@ function IncumplimientoContent() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Registrar incumplimiento</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Cobrar con QR</h1>
           <p className="text-base text-gray-500">{perm.cuadraAsignada}</p>
         </div>
       </div>
 
-      <NonPaymentForm
+      <QRPaymentForm
         permisionarioId={perm.id}
         cuadra={perm.cuadraAsignada}
+        zonaId={perm.zonaId}
         initialDominio={dominioParam}
-        onSuccess={() => {}}
+        onSuccess={handleSuccess}
       />
     </div>
   );

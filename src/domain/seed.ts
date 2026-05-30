@@ -59,6 +59,7 @@ export const SEED_PERMISIONARIOS: Permisionario[] = [
     zonaId: 'zona-centro',
     activo: true,
     horariosAutorizados: { diurno: true, nocturno: false },
+    aliasMercadoPago: 'rosa.martinez.mp',
     createdAt: '2025-01-15T10:00:00.000Z',
   },
   {
@@ -71,6 +72,7 @@ export const SEED_PERMISIONARIOS: Permisionario[] = [
     zonaId: 'zona-centro',
     activo: true,
     horariosAutorizados: { diurno: true, nocturno: false },
+    aliasMercadoPago: 'jorge.perez.mp',
     createdAt: '2025-02-20T10:00:00.000Z',
   },
   {
@@ -83,6 +85,7 @@ export const SEED_PERMISIONARIOS: Permisionario[] = [
     zonaId: 'zona-nocturna-1',
     activo: true,
     horariosAutorizados: { diurno: true, nocturno: true },
+    aliasMercadoPago: 'ana.rodriguez.mp',
     createdAt: '2025-03-10T10:00:00.000Z',
   },
 ];

@@ -51,6 +51,7 @@ export interface Permisionario {
     diurno: boolean;
     nocturno: boolean;
   };
+  aliasMercadoPago?: string;
   createdAt: string;
 }
 
@@ -96,8 +97,10 @@ export interface Pago {
   estado: PaymentStatus;
   permisionarioId: string;
   cuadra: string;
+  conductorId?: string;
   createdAt: string;
   mpTransactionId?: string;
+  mpPreferenceId?: string;
 }
 
 export interface Ticket {
@@ -139,6 +142,7 @@ export interface Emergencia {
   tipo: EmergencyType;
   origenRol: 'conductor' | 'permisionario';
   origenId: string;
+  permisionarioId: string;
   cuadra: string;
   coordenadas: { lat: number; lng: number };
   timestamp: string;

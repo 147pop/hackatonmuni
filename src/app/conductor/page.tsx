@@ -41,7 +41,7 @@ export default function ConductorPage() {
     }
   }
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>;
   if (!conductor) return <ConductorSelector onSelect={handleSelect} />;
 
   const minRestantes = activeTicket ? calcularTiempoRestanteMinutos(activeTicket.vencimiento) : 0;

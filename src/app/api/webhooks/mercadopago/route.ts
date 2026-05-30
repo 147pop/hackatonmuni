@@ -1,4 +1,4 @@
-import MercadoPagoConfig, { Payment } from 'mercadopago';
+import MercadoPagoConfig, { Payment, MerchantOrder } from 'mercadopago';
 import crypto from 'crypto';
 
 const client = new MercadoPagoConfig({
@@ -44,18 +44,30 @@ export async function POST(request: Request) {
     try {
       const paymentClient = new Payment(client);
       const payment = await paymentClient.get({ id: Number(data.data.id) });
-
       console.info('[MP Webhook] Pago recibido', {
         id: payment.id,
         status: payment.status,
         monto: payment.transaction_amount,
         externalRef: payment.external_reference,
       });
-
-      // Con backend real: actualizar estado del ticket/deuda en BD
-      // Con localStorage: el estado ya se actualizó en cliente vía onSubmit del Brick
     } catch (err) {
       console.error('[MP Webhook] Error consultando pago:', err);
+    }
+  }
+
+  if (data.type === 'merchant_order' && data.data?.id) {
+    try {
+      const moClient = new MerchantOrder(client);
+      const order = await moClient.get({ merchantOrderId: Number(data.data.id) });
+      console.info('[MP Webhook] Merchant order recibida', {
+        id: order.id,
+        status: order.status,
+        externalRef: order.external_reference,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        orderStatus: (order as any).order_status,
+      });
+    } catch (err) {
+      console.error('[MP Webhook] Error consultando merchant order:', err);
     }
   }
 

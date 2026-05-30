@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { permisionarioStore, roleStore } from '@/lib/sem-store';
@@ -10,6 +11,17 @@ import type { Permisionario, Ticket } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
 
 export default function RegistrarPage() {
+  return (
+    <Suspense fallback={<div className="max-w-lg mx-auto px-4 py-8 text-center text-gray-400">Cargando…</div>}>
+      <RegistrarContent />
+    </Suspense>
+  );
+}
+
+function RegistrarContent() {
+  const searchParams = useSearchParams();
+  const dominioParam = searchParams.get('dominio') ?? '';
+
   const [perm, setPerm] = useState<Permisionario | null>(null);
 
   useEffect(() => {
@@ -29,7 +41,6 @@ export default function RegistrarPage() {
   }
 
   function handleSuccess(ticket: Ticket) {
-    // RF-PAG-11: simulate incoming payment notification
     notifyPagoEntrante(ticket.dominio, ticket.monto);
   }
 
@@ -49,6 +60,7 @@ export default function RegistrarPage() {
         permisionarioId={perm.id}
         cuadra={perm.cuadraAsignada}
         zonaId={perm.zonaId}
+        initialDominio={dominioParam}
         onSuccess={handleSuccess}
       />
     </div>

@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       init_point: mockInitPoint,
       sandbox_init_point: mockInitPoint,
       preferenceId: mockPreferenceId,
+      externalReference,
       mock: true,
     });
   }
@@ -59,12 +60,6 @@ export async function POST(request: NextRequest) {
         notification_url: process.env.APP_URL
           ? `${process.env.APP_URL}/api/webhooks/mercadopago`
           : undefined,
-        back_urls: {
-          success: `${origin}/pagar/${permisionarioId}/resultado?status=approved`,
-          failure: `${origin}/pagar/${permisionarioId}/resultado?status=rejected`,
-          pending: `${origin}/pagar/${permisionarioId}/resultado?status=in_process`,
-        },
-        auto_return: 'approved',
         statement_descriptor: 'SEM SALTA',
         binary_mode: true,
       },
@@ -74,6 +69,7 @@ export async function POST(request: NextRequest) {
       init_point: result.init_point,
       sandbox_init_point: result.sandbox_init_point,
       preferenceId: result.id,
+      externalReference,
       mock: false,
     });
   } catch (err: unknown) {

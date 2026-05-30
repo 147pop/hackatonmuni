@@ -33,10 +33,11 @@ function getPortalNav(): NavItem[] {
 
 function getPermisionarioNav(): NavItem[] {
   return [
-    { href: ROUTES.permisionario.root,      label: 'Inicio',     icon: <LayoutDashboard className="w-5 h-5" /> },
-    { href: ROUTES.permisionario.registrar, label: 'Registrar',  icon: <QrCode className="w-5 h-5" /> },
-    { href: ROUTES.permisionario.actividad, label: 'Actividad',  icon: <FileText className="w-5 h-5" /> },
-    { href: ROUTES.permisionario.credencial,label: 'Credencial', icon: <User className="w-5 h-5" /> },
+    { href: ROUTES.permisionario.root,       label: 'Inicio',    icon: <LayoutDashboard className="w-5 h-5" /> },
+    { href: ROUTES.permisionario.registrar,  label: 'Vehículos', icon: <Car className="w-5 h-5" /> },
+    { href: ROUTES.permisionario.cobrarQr,   label: 'Cobros',    icon: <QrCode className="w-5 h-5" /> },
+    { href: ROUTES.permisionario.actividad,  label: 'Reportes',  icon: <FileText className="w-5 h-5" /> },
+    { href: ROUTES.permisionario.credencial, label: 'Más',       icon: <User className="w-5 h-5" /> },
   ];
 }
 
@@ -107,6 +108,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublic = pathname.startsWith('/pagar');
   if (isPublic) {
+    return <>{children}</>;
+  }
+
+  // The permisionario pages have their own embedded mobile app layout
+  const isPermisionarioApp = pathname === ROUTES.permisionario.root || pathname.startsWith(ROUTES.permisionario.root + '/');
+  if (isPermisionarioApp) {
     return <>{children}</>;
   }
 

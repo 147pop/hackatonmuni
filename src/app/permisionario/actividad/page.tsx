@@ -2,230 +2,659 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CreditCard, Banknote, AlertTriangle, Clock, Search } from 'lucide-react';
-import { PlateInput } from '@/components/plate-input';
-import { permisionarioStore, roleStore, ticketStore, deudaStore } from '@/lib/sem-store';
-import type { Permisionario, Ticket, Deuda } from '@/domain/types';
+import {
+  Car, Clock, TrendingUp, CheckCircle,
+  Bell, AlertCircle, MapPin, Smartphone, Banknote,
+  LayoutGrid, DollarSign, BarChart3, MoreHorizontal, User, ChevronRight, Menu
+} from 'lucide-react';
+import { db } from '@/lib/db';
+import type { Permisionario, Ticket, Pago, VehiculoObservado } from '@/domain/types';
+import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
 import { ROUTES } from '@/lib/routes';
 
-type Tab = 'hoy' | 'patente';
+import React from 'react';
 
-export default function ActividadPage() {
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: unknown}> {
+  constructor(props: unknown) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: unknown) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return <div style={{padding: 20, color: 'red'}}><h1>Something went wrong.</h1><pre>{(this.state.error as Error)?.toString()}</pre></div>;
+    }
+    return this.props.children;
+  }
+}
+
+export default function ResumenPage() {
   const [perm, setPerm] = useState<Permisionario | null>(null);
-  const [tab, setTab] = useState<Tab>('hoy');
-
-  // Tab: hoy
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [deudas, setDeudas] = useState<Deuda[]>([]);
-
-  // Tab: patente
-  const [dominioBusqueda, setDominioBusqueda] = useState('');
-  const [dominioValido, setDominioValido] = useState(false);
-  const [historialDominio, setHistorialDominio] = useState<Array<{ tipo: 'ticket' | 'deuda'; fecha: string; item: Ticket | Deuda }> | null>(null);
-  const [buscado, setBuscado] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const id = roleStore.getActivePermisionarioId();
-    if (!id) return;
-    const p = permisionarioStore.getById(id);
-    if (!p) return;
-    setPerm(p);
-
-    const hoy = new Date().toISOString().split('T')[0];
-    setTickets(ticketStore.getAll().filter((t) => t.permisionarioId === id && t.inicio.startsWith(hoy)));
-    setDeudas(deudaStore.getAll().filter((d) => d.permisionarioId === id && d.fecha.startsWith(hoy)));
+    let active = true;
+    async function load() {
+      const id = db.role.getActivePermisionarioId();
+      if (id) {
+        const p = await db.permisionarios.getById(id);
+        if (active) setPerm(p ?? null);
+      }
+      if (active) setLoaded(true);
+    }
+    load();
+    return () => { active = false; };
   }, []);
 
-  function handleBuscarPatente() {
-    if (!dominioValido || !perm) return;
-    const domUpper = dominioBusqueda.toUpperCase();
-    const tks = ticketStore.getByDominio(domUpper).filter((t) => t.permisionarioId === perm.id);
-    const dds = deudaStore.getByDominio(domUpper).filter((d) => d.permisionarioId === perm.id);
-
-    const entries = [
-      ...tks.map((t) => ({ tipo: 'ticket' as const, fecha: t.inicio, item: t })),
-      ...dds.map((d) => ({ tipo: 'deuda' as const, fecha: d.fecha, item: d })),
-    ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-
-    setHistorialDominio(entries);
-    setBuscado(domUpper);
-  }
-
+  if (!loaded) return <div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>;
   if (!perm) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 text-center space-y-4">
-        <p className="text-base text-gray-500">Primero seleccioná tu usuario.</p>
-        <Link href={ROUTES.permisionario.root} className="btn-xl inline-block bg-municipal-600 text-white rounded-xl px-6">Volver</Link>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+        <p className="text-gray-500 mb-4">No hay permisionario activo.</p>
+        <Link href={ROUTES.permisionario.root} className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">Volver</Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <Link href={ROUTES.permisionario.root} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Actividad</h1>
-          <p className="text-base text-gray-500">{perm.cuadraAsignada}</p>
-        </div>
-      </div>
+    <ErrorBoundary>
+      <DashboardResumen perm={perm} />
+    </ErrorBoundary>
+  );
+}
 
-      {/* Tabs */}
-      <div className="grid grid-cols-2 gap-1 bg-gray-100 rounded-xl p-1">
-        {(['hoy', 'patente'] as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`py-2.5 text-sm font-semibold rounded-lg transition-all ${tab === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            {t === 'hoy' ? 'Actividad de hoy' : 'Buscar por patente'}
+function DashboardResumen({ perm }: { perm: Permisionario }) {
+  const cuadra = perm.cuadraAsignada;
+  const hoyStr = new Date().toISOString().split('T')[0];
+
+  const [data, setData] = useState<{
+    todosTickets: Ticket[];
+    pagosHoy: Pago[];
+    observados: VehiculoObservado[];
+  }>({ todosTickets: [], pagosHoy: [], observados: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    async function fetchData() {
+      try {
+        const [allTickets, allPagos, obs] = await Promise.all([
+          db.tickets.getAll(),
+          db.pagos.getByPermisionario(perm.id),
+          db.observados.getByPermisionarioCuadra(perm.id, cuadra)
+        ]);
+        
+        if (!active) return;
+        const ticketsHoy = allTickets.filter(t => t.permisionarioId === perm.id && t.inicio.startsWith(hoyStr));
+        const pagosSuccessHoy = allPagos.filter(p => p.createdAt.startsWith(hoyStr) && p.estado === 'success');
+        
+        setData({ todosTickets: ticketsHoy, pagosHoy: pagosSuccessHoy, observados: obs });
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    fetchData();
+    return () => { active = false; };
+  }, [perm.id, cuadra, hoyStr]);
+
+  if (loading) return <div className="p-6 text-center text-gray-500 text-sm">Cargando datos...</div>;
+
+  const { todosTickets, pagosHoy, observados } = data;
+
+  // Status computation for currently in street vs total today
+  const ticketsActivos = todosTickets.filter(t => t.activo && calcularTiempoRestanteMinutos(t.vencimiento) > 0);
+  const ticketsVencidos = todosTickets.filter(t => t.activo && calcularTiempoRestanteMinutos(t.vencimiento) <= 0);
+  const impagosActuales = observados.filter(
+    (obs) =>
+      !ticketsActivos.some((t) => t.dominio.toUpperCase() === obs.dominio.toUpperCase()) &&
+      !ticketsVencidos.some((t) => t.dominio.toUpperCase() === obs.dominio.toUpperCase())
+  );
+
+  // Metrics
+  const totalRecaudado = pagosHoy.reduce((s, p) => s + p.monto, 0);
+  
+  // Rendimiento
+  const autosRegistrados = todosTickets.length;
+  const pagosRealizados = pagosHoy.length;
+  const impagosTotal = ticketsVencidos.length + impagosActuales.length;
+  const enCalleAhora = ticketsActivos.length + ticketsVencidos.length + impagosActuales.length;
+
+  const promPorVehiculo = autosRegistrados > 0 ? Math.round(totalRecaudado / autosRegistrados) : 0;
+  const tiempoPromedio = autosRegistrados > 0 ? Math.round(todosTickets.reduce((s, t) => s + t.duracionMinutos, 0) / autosRegistrados) : 0;
+  
+  const totalPagosImpagos = pagosRealizados + impagosTotal;
+  const tasaPago = totalPagosImpagos > 0 ? Math.round((pagosRealizados / totalPagosImpagos) * 100) : 0;
+  const tasaImpago = totalPagosImpagos > 0 ? Math.round((impagosTotal / totalPagosImpagos) * 100) : 0;
+
+  // Jornada (Simulated fixed based on zone or config)
+  // Let's use a dynamic one if possible, otherwise fixed 19:00 to 23:00 to match design (assuming nocturno)
+  const isNocturno = new Date().getHours() >= 19 || new Date().getHours() < 5;
+  const startHourStr = isNocturno ? "19:00" : "07:00";
+  const endHourStr = isNocturno ? "23:00" : "21:00";
+  
+  const now = new Date();
+  const currentHourStr = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  
+  const startH = parseInt(startHourStr.split(':')[0]);
+  let endH = parseInt(endHourStr.split(':')[0]);
+  if (endH < startH) endH += 24; // overnight
+  let currH = now.getHours();
+  if (currH < startH && isNocturno) currH += 24; // handles 1 AM etc.
+
+  let progress = 0;
+  const totalMinutes = (endH - startH) * 60;
+  const currentMinutes = ((currH - startH) * 60) + now.getMinutes();
+  
+  if (currentMinutes > 0 && totalMinutes > 0) {
+    progress = Math.min(100, Math.max(0, Math.round((currentMinutes / totalMinutes) * 100)));
+  }
+
+  // Cobros
+  const cobrosDigitales = pagosHoy.filter(p => p.metodoPago === 'digital').length;
+  const cobrosManuales = pagosHoy.filter(p => p.metodoPago === 'efectivo').length;
+
+  // Recaudacion por hora (mocked for visual fidelity or real)
+  const barData = [
+    { label: '19:00', value: 40 },
+    { label: '20:00', value: 65 },
+    { label: '21:00', value: 100 }, // highest
+    { label: '22:00', value: 55 },
+    { label: '23:00', value: 30 },
+  ];
+
+  const pieDeg = Math.round((tasaPago / 100) * 360);
+
+  return (
+    <div className="lc-app">
+      <style>{STYLES}</style>
+
+      {/* ── Header ── */}
+      <header className="lc-header">
+        <img src="/logomain.png" alt="La Cuadra" className="lc-logo" />
+      </header>
+
+      <div className="lc-body">
+        
+        {/* Greeting */}
+        <div className="lc-greeting-card">
+          <div className="lc-avatar">
+            <User className="w-7 h-7" style={{ color: '#fff' }} />
+          </div>
+          <div className="lc-greeting-info">
+            <p className="lc-greeting-name">
+              Hola, <span className="lc-greeting-highlight">{perm.nombre}</span>
+            </p>
+            <Link href={ROUTES.permisionario.credencial} className="lc-ver-perfil">
+              Ver perfil &rsaquo;
+            </Link>
+          </div>
+          <button
+            className="lc-hamburger"
+            onClick={() => { db.role.setActivePermisionarioId(null); window.location.reload(); }}
+          >
+            <Menu className="w-5 h-5" />
           </button>
-        ))}
-      </div>
+        </div>
 
-      {tab === 'hoy' && <HoyTab tickets={tickets} deudas={deudas} />}
-      {tab === 'patente' && (
-        <PatenteTab
-          dominio={dominioBusqueda}
-          setDominio={setDominioBusqueda}
-          dominioValido={dominioValido}
-          setDominioValido={setDominioValido}
-          onBuscar={handleBuscarPatente}
-          historial={historialDominio}
-          buscado={buscado}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Tab: Hoy ────────────────────────────────────────────────────────────────
-
-function HoyTab({ tickets, deudas }: { tickets: Ticket[]; deudas: Deuda[] }) {
-  return (
-    <div className="space-y-6">
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-          <CreditCard className="w-4 h-4" /> Pagos registrados ({tickets.length})
-        </h2>
-        {tickets.length === 0
-          ? <EmptyState icon={<CreditCard className="w-8 h-8 text-gray-300" />} message="Todavía no registraste pagos hoy." />
-          : tickets.map((t) => <TicketRow key={t.id} ticket={t} />)}
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-red-500" /> Incumplimientos y horas extra ({deudas.length})
-        </h2>
-        {deudas.length === 0
-          ? <EmptyState icon={<AlertTriangle className="w-8 h-8 text-gray-300" />} message="Sin incumplimientos registrados hoy." />
-          : deudas.map((d) => <DeudaRow key={d.id} deuda={d} />)}
-      </section>
-    </div>
-  );
-}
-
-// ── Tab: Patente ─────────────────────────────────────────────────────────────
-
-interface PatenteTabProps {
-  dominio: string;
-  setDominio: (v: string) => void;
-  dominioValido: boolean;
-  setDominioValido: (v: boolean) => void;
-  onBuscar: () => void;
-  historial: Array<{ tipo: 'ticket' | 'deuda'; fecha: string; item: Ticket | Deuda }> | null;
-  buscado: string;
-}
-
-function PatenteTab({ dominio, setDominio, dominioValido, setDominioValido, onBuscar, historial, buscado }: PatenteTabProps) {
-  return (
-    <div className="space-y-4">
-      <PlateInput value={dominio} onChange={setDominio} onValidChange={setDominioValido} />
-      <button onClick={onBuscar} disabled={!dominioValido}
-        className="btn-xl bg-municipal-600 hover:bg-municipal-700 disabled:bg-gray-300 text-white w-full flex items-center justify-center gap-2">
-        <Search className="w-4 h-4" /> Buscar historial
-      </button>
-
-      {historial !== null && (
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-gray-500">
-            Historial de <span className="font-mono text-gray-900">{buscado}</span> ({historial.length} registros)
-          </p>
-          {historial.length === 0
-            ? <EmptyState icon={<Search className="w-8 h-8 text-gray-300" />} message={`Sin registros para ${buscado} en tu cuadra.`} />
-            : historial.map((entry, i) => (
-              <div key={i}>
-                {entry.tipo === 'ticket'
-                  ? <TicketRow ticket={entry.item as Ticket} showDate />
-                  : <DeudaRow deuda={entry.item as Deuda} showDate />}
+        {/* Top grid (Recaudado & Jornada) */}
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          
+          {/* Recaudado hoy (Blue card) */}
+          <div className="res-blue-card flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-white/90">
+                <div className="bg-white/20 p-1.5 rounded-full">
+                  <Banknote className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-2xl font-bold text-white tracking-tight leading-none">${totalRecaudado.toLocaleString('es-AR')}</span>
+                  <span className="text-xs text-blue-100 font-medium mt-0.5">Recaudado hoy</span>
+                </div>
               </div>
-            ))}
+            </div>
+            {/* Mock Line chart using SVG */}
+            <div className="mt-4">
+              <svg viewBox="0 0 100 30" className="w-full h-10 overflow-visible">
+                <path d="M0,25 Q10,20 20,22 T40,15 T60,18 T80,5 T100,2" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+                <path d="M0,25 Q10,20 20,22 T40,15 T60,18 T80,5 T100,2 L100,35 L0,35 Z" fill="url(#grad)" />
+                <circle cx="100" cy="2" r="2" fill="white" />
+                <defs>
+                  <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.2)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          </div>
+
+          {/* Jornada de hoy */}
+          <div className="res-card flex flex-col justify-between">
+            <div className="flex items-center gap-1.5 text-gray-700 font-bold text-sm mb-3">
+              <Clock className="w-4 h-4 text-blue-600" />
+              Jornada de hoy
+            </div>
+            
+            <div className="flex justify-between items-end mb-3">
+              <div className="flex flex-col text-center">
+                <span className="text-[10px] text-gray-400 font-medium">Inicio</span>
+                <span className="text-sm font-bold text-gray-800">{startHourStr}</span>
+              </div>
+              <div className="flex flex-col text-center">
+                <span className="text-[10px] text-gray-400 font-medium">Hora actual</span>
+                <span className="text-lg font-bold text-blue-600 leading-none">{currentHourStr}</span>
+              </div>
+              <div className="flex flex-col text-center">
+                <span className="text-[10px] text-gray-400 font-medium">Fin</span>
+                <span className="text-sm font-bold text-gray-800">{endHourStr}</span>
+              </div>
+            </div>
+
+            <div className="relative w-full h-2 bg-gray-100 rounded-full mb-1">
+              <div className="absolute top-0 left-0 h-full bg-blue-600 rounded-full" style={{ width: `${progress}%` }}></div>
+            </div>
+            <div className="flex justify-between items-center mt-1">
+              <span className="text-[11px] text-gray-500 font-medium">Avance de jornada</span>
+              <span className="text-[12px] font-bold text-blue-600">{progress}%</span>
+            </div>
+          </div>
         </div>
-      )}
-    </div>
-  );
-}
 
-// ── Row components ───────────────────────────────────────────────────────────
+        {/* Estadísticas de autos y Rendimiento Grid */}
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          
+          {/* Estadisticas de autos */}
+          <div className="res-card">
+            <div className="flex items-center gap-1.5 text-gray-800 font-bold text-[13px] mb-3">
+              <Car className="w-4 h-4 text-blue-600" />
+              Estadísticas de autos
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col justify-center items-center p-2 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-1 mb-1">
+                  <Car className="w-3 h-3 text-blue-600" />
+                  <span className="text-[10px] text-gray-500 leading-none">Autos<br/>registrados</span>
+                </div>
+                <span className="text-xl font-bold text-blue-600 leading-none mt-1">{autosRegistrados}</span>
+              </div>
+              
+              <div className="flex flex-col justify-center items-center p-2 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-1 mb-1">
+                  <CheckCircle className="w-3 h-3 text-green-500" />
+                  <span className="text-[10px] text-gray-500 leading-none">Pagos<br/>realizados</span>
+                </div>
+                <span className="text-xl font-bold text-green-600 leading-none mt-1">{pagosRealizados}</span>
+              </div>
 
-function TicketRow({ ticket: t, showDate }: { ticket: Ticket; showDate?: boolean }) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between">
-      <div className="space-y-0.5">
-        <p className="text-base font-bold font-mono text-gray-900">{t.dominio}</p>
-        <p className="text-sm text-gray-500 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5" />
-          {showDate
-            ? new Date(t.inicio).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' '
-            : ''}
-          {new Date(t.inicio).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-          {' · '}{t.duracionMinutos} min
-        </p>
-        <p className="text-xs text-gray-400">{t.numero}</p>
-      </div>
-      <div className="text-right space-y-1">
-        <p className="text-base font-bold text-gray-900">${t.monto.toLocaleString('es-AR')}</p>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.metodoPago === 'digital' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-          {t.metodoPago === 'digital' ? <CreditCard className="inline w-3 h-3 mr-1" /> : <Banknote className="inline w-3 h-3 mr-1" />}
-          {t.metodoPago === 'digital' ? 'Digital' : 'Efectivo'}
-        </span>
-      </div>
-    </div>
-  );
-}
+              <div className="flex flex-col justify-center items-center p-2 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-1 mb-1">
+                  <div className="bg-orange-100 p-0.5 rounded-full"><AlertCircle className="w-2.5 h-2.5 text-orange-500" /></div>
+                  <span className="text-[10px] text-gray-500 leading-none">Impagos</span>
+                </div>
+                <span className="text-xl font-bold text-orange-500 leading-none mt-1">{impagosTotal}</span>
+              </div>
 
-function DeudaRow({ deuda: d, showDate }: { deuda: Deuda; showDate?: boolean }) {
-  const esHoraExtra = d.tipo === 'hora_extra';
-  return (
-    <div className={`border rounded-xl p-4 flex items-center justify-between ${esHoraExtra ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
-      <div className="space-y-0.5">
-        <div className="flex items-center gap-2">
-          <p className="text-base font-bold font-mono text-gray-900">{d.dominio}</p>
-          {esHoraExtra && <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-medium">Hora extra</span>}
+              <div className="flex flex-col justify-center items-center p-2 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-1 mb-1">
+                  <Car className="w-3 h-3 text-blue-500" />
+                  <span className="text-[10px] text-gray-500 leading-none">En calle<br/>ahora</span>
+                </div>
+                <span className="text-xl font-bold text-blue-600 leading-none mt-1">{enCalleAhora}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Rendimiento */}
+          <div className="res-card flex flex-col">
+            <div className="flex items-center gap-1.5 text-gray-800 font-bold text-[13px] mb-3">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+              Rendimiento
+            </div>
+            
+            <div className="flex flex-col gap-3 flex-1 justify-center">
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                <span className="text-[11px] text-gray-500 font-medium leading-tight w-20">Promedio por vehículo</span>
+                <span className="text-[15px] font-bold text-blue-600">${promPorVehiculo}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                <span className="text-[11px] text-gray-500 font-medium leading-tight w-20">Tiempo promedio por estadía</span>
+                <span className="text-[15px] font-bold text-blue-600">{tiempoPromedio} min</span>
+              </div>
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-[11px] text-gray-500 font-medium leading-tight">Tasa de pago</span>
+                <span className="text-[15px] font-bold text-green-500">{tasaPago}%</span>
+              </div>
+            </div>
+          </div>
+          
         </div>
-        <p className="text-sm text-gray-500 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5" />
-          {showDate
-            ? new Date(d.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) + ' '
-            : ''}
-          {new Date(d.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-        </p>
-        {d.minutosExcedidos !== undefined && (
-          <p className="text-xs text-amber-700">Excedió {d.minutosExcedidos} min</p>
-        )}
+
+        {/* Charts Grid */}
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          
+          {/* Pagos vs Impagos (Pie) */}
+          <div className="res-card flex flex-col items-center">
+            <h3 className="text-[13px] font-bold text-gray-800 self-start w-full mb-3">Pagos vs impagos</h3>
+            
+            <div className="flex-1 flex flex-col items-center justify-center w-full">
+              <div className="flex items-center justify-center gap-4 w-full">
+                
+                {/* Donut Chart via conic-gradient */}
+                <div 
+                  className="res-donut" 
+                  style={{ 
+                    background: `conic-gradient(#22c55e ${pieDeg}deg, #f97316 ${pieDeg}deg 360deg)` 
+                  }}
+                >
+                  <div className="res-donut-inner"></div>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                      <span className="text-[11px] text-gray-600 font-medium">Pagos</span>
+                    </div>
+                    <span className="text-[12px] font-bold text-gray-800 ml-3.5">
+                      {tasaPago}% <span className="text-gray-400 font-medium">({pagosRealizados})</span>
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                      <span className="text-[11px] text-gray-600 font-medium">Impagos</span>
+                    </div>
+                    <span className="text-[12px] font-bold text-gray-800 ml-3.5">
+                      {tasaImpago}% <span className="text-gray-400 font-medium">({impagosTotal})</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recaudacion por hora (Bar) */}
+          <div className="res-card flex flex-col">
+            <h3 className="text-[13px] font-bold text-gray-800 w-full mb-3">Recaudación por hora</h3>
+            
+            <div className="flex-1 flex items-end justify-between gap-1.5 h-20 pt-2">
+              {barData.map((d, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
+                  <div className="w-full bg-blue-100 rounded-t-sm rounded-b-sm relative" style={{ height: '60px' }}>
+                    <div 
+                      className="absolute bottom-0 left-0 w-full bg-blue-500 rounded-t-sm rounded-b-sm transition-all" 
+                      style={{ height: `${d.value}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-[9px] text-gray-400 font-medium">{d.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+        </div>
+
+        {/* Bottom Alerts & Methods Grid */}
+        <div className="grid grid-cols-2 gap-3 mt-3 mb-6">
+          
+          {/* Alertas rapidas */}
+          <div className="res-card">
+            <div className="flex items-center gap-1.5 text-gray-800 font-bold text-[13px] mb-3">
+              <Bell className="w-4 h-4 text-blue-600" />
+              Alertas rápidas
+            </div>
+            
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-orange-50 p-1.5 rounded-full"><Clock className="w-3.5 h-3.5 text-orange-500" /></div>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">2 vehículos por vencer</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+              </div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-orange-50 p-1.5 rounded-full"><AlertCircle className="w-3.5 h-3.5 text-orange-500" /></div>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">1 pago pendiente hace 38 min</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="bg-blue-50 p-1.5 rounded-full"><MapPin className="w-3.5 h-3.5 text-blue-600" /></div>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">Zona Centro con mayor actividad</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+              </div>
+            </div>
+          </div>
+
+          {/* Metodos de cobro */}
+          <div className="res-card flex flex-col">
+            <div className="flex items-center gap-1.5 text-gray-800 font-bold text-[13px] mb-3">
+              <Banknote className="w-4 h-4 text-blue-600" />
+              Métodos de cobro
+            </div>
+            
+            <div className="flex flex-col gap-3 justify-center flex-1">
+              <div className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-blue-600" />
+                  <span className="text-[12px] text-gray-600 font-medium">Cobros digitales</span>
+                </div>
+                <span className="text-[16px] font-bold text-blue-600">{cobrosDigitales}</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50">
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-blue-600" />
+                  <span className="text-[12px] text-gray-600 font-medium">Cobros manuales</span>
+                </div>
+                <span className="text-[16px] font-bold text-blue-600">{cobrosManuales}</span>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+
       </div>
-      <div className="text-right">
-        <p className={`text-base font-bold ${esHoraExtra ? 'text-amber-700' : 'text-red-700'}`}>${d.monto.toLocaleString('es-AR')}</p>
-        <p className={`text-xs capitalize ${d.estado === 'pagada' ? 'text-green-600' : 'text-red-500'}`}>{d.estado}</p>
-      </div>
+
+      {/* ── Bottom Nav ── */}
+      <nav className="lc-bottom-nav">
+        {([
+          { id: 'inicio',    label: 'Inicio',    icon: LayoutGrid,     href: ROUTES.permisionario.root },
+          { id: 'vehiculos', label: 'Vehículos', icon: Car,            href: ROUTES.permisionario.registrar },
+          { id: 'cobros',    label: 'Cobros',    icon: DollarSign,     href: ROUTES.permisionario.cobrarQr },
+          { id: 'resumen',   label: 'Resumen',   icon: BarChart3,      href: ROUTES.permisionario.actividad },
+          { id: 'mas',       label: 'Más',       icon: MoreHorizontal, href: ROUTES.permisionario.credencial },
+        ] as const).map(({ id, label, icon: Icon, href }) => {
+          const isActive = id === 'resumen';
+          return (
+            <Link
+              key={id}
+              href={href}
+              className={`lc-nav-item ${isActive ? 'lc-nav-item--active' : ''}`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
 
-function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
-  return (
-    <div className="flex flex-col items-center gap-2 py-8 text-center bg-gray-50 rounded-xl">
-      {icon}
-      <p className="text-base text-gray-400">{message}</p>
-    </div>
-  );
-}
+const STYLES = `
+  /* ── App shell ── */
+  .lc-app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    background: #F5F7FA;
+    max-width: 480px;
+    margin: 0 auto;
+    font-family: var(--font-body);
+  }
+
+  /* ── Header ── */
+  .lc-header {
+    background: #2557C7;
+    padding-top: env(safe-area-inset-top, 0px);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(21,50,111,0.3);
+  }
+  .lc-logo {
+    height: 90px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  /* ── Body ── */
+  .lc-body {
+    flex: 1;
+    padding: 12px 12px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+
+  /* ── Greeting card ── */
+  .lc-greeting-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(21,50,111,0.07);
+  }
+  .lc-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #64748B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .lc-greeting-info { flex: 1; }
+  .lc-greeting-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    color: #15181F;
+    margin: 0;
+  }
+  .lc-greeting-highlight { color: #2563EB; }
+  .lc-ver-perfil {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: #2563EB;
+    text-decoration: none;
+    display: block;
+    margin-top: 2px;
+  }
+  .lc-hamburger {
+    background: none;
+    border: none;
+    color: #15181F;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .res-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.02);
+  }
+  
+  .res-blue-card {
+    background: linear-gradient(135deg, #1e40af, #2563eb);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+  }
+  
+  .res-location-badge {
+    background: #eff6ff;
+    border-radius: 12px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .res-donut {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .res-donut-inner {
+    width: 36px;
+    height: 36px;
+    background: #fff;
+    border-radius: 50%;
+  }
+
+  /* Shared Navigation Styles with main app */
+  .lc-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: #ffffff;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 10px 24px;
+    box-shadow: 0 -4px 20px rgba(21, 50, 111, 0.08);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    z-index: 50;
+  }
+  
+  .lc-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: #94A3B8;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  
+  .lc-nav-item:hover { color: #2563EB; }
+  
+  .lc-nav-item--active {
+    color: #2563EB;
+  }
+`;

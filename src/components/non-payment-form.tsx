@@ -10,12 +10,13 @@ import type { VehicleType, Deuda } from '@/domain/types';
 interface NonPaymentFormProps {
   permisionarioId: string;
   cuadra: string;
+  initialDominio?: string;
   onSuccess?: (deuda: Deuda) => void;
 }
 
-export function NonPaymentForm({ permisionarioId, cuadra, onSuccess }: NonPaymentFormProps) {
-  const [dominio, setDominio] = useState('');
-  const [dominioValido, setDominioValido] = useState(false);
+export function NonPaymentForm({ permisionarioId, cuadra, initialDominio, onSuccess }: NonPaymentFormProps) {
+  const [dominio, setDominio] = useState(initialDominio ?? '');
+  const [dominioValido, setDominioValido] = useState(!!initialDominio);
   const [tipo, setTipo] = useState<VehicleType>('auto');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);

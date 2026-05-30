@@ -1,13 +1,24 @@
-/** RF-PAT-01, RF-PAT-03: Argentine license plate formats AA000AA (new) and ABC123 (old) */
-export function validarDominio(dominio: string): { valido: boolean; error?: string } {
+/** RF-PAT-01, RF-PAT-03: Argentine license plate formats */
+export function validarDominio(dominio: string): { valido: boolean; error?: string; formato?: string } {
   const normalizado = normalizarDominio(dominio);
-  const nuevo = /^[A-Z]{2}\d{3}[A-Z]{2}$/;
-  const viejo = /^[A-Z]{3}\d{3}$/;
 
-  if (nuevo.test(normalizado) || viejo.test(normalizado)) {
-    return { valido: true };
+  const formatos = [
+    { regex: /^[A-Z]{2}\d{3}[A-Z]{2}$/, nombre: 'Mercosur auto (AA123AA)' },
+    { regex: /^[A-Z]{3}\d{3}$/, nombre: 'Nacional auto (ABC123)' },
+    { regex: /^[A-Z]\d{3}[A-Z]{3}$/, nombre: 'Mercosur moto (A123AAA)' },
+    { regex: /^\d{3}[A-Z]{3}$/, nombre: 'Nacional moto (123ABC)' },
+  ];
+
+  for (const formato of formatos) {
+    if (formato.regex.test(normalizado)) {
+      return { valido: true, formato: formato.nombre };
+    }
   }
-  return { valido: false, error: 'Formato inválido. Use AA000AA (nuevo) o ABC123 (viejo)' };
+
+  return {
+    valido: false,
+    error: 'Formato inválido. Formatos válidos: AA123AA (auto), ABC123 (auto viejo), A123AAA (moto), 123ABC (moto vieja)',
+  };
 }
 
 export function normalizarDominio(dominio: string): string {

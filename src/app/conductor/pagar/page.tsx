@@ -18,7 +18,7 @@ export default function PagarPage() {
     setLoaded(true);
   }, []);
 
-  if (!loaded) return null;
+  if (!loaded) return <div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-5">

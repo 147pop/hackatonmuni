@@ -13,11 +13,18 @@ describe('validarDominio', () => {
 
   // Invalid
   it('cadena vacía — inválido', () => expect(validarDominio('').valido).toBe(false));
-  it('123ABC — inválido', () => expect(validarDominio('123ABC').valido).toBe(false));
+  it('123ABC — válido (moto vieja)', () => expect(validarDominio('123ABC').valido).toBe(true));
   it('ABCDEFG — inválido (solo letras)', () => expect(validarDominio('ABCDEFG').valido).toBe(false));
   it('AB12CD — inválido (faltan dígitos)', () => expect(validarDominio('AB12CD').valido).toBe(false));
   it('demasiado largo — inválido', () => expect(validarDominio('AB12345CD').valido).toBe(false));
   it('AB-123-CD con guiones — válido (normaliza)', () => expect(validarDominio('AB-123-CD').valido).toBe(true));
+});
+
+describe('validarDominio — formatos de moto', () => {
+  it('A123AAA — válido (moto Mercosur)', () => expect(validarDominio('A123AAA').valido).toBe(true));
+  it('123ABC — válido (moto vieja)', () => expect(validarDominio('123ABC').valido).toBe(true));
+  it('a123bcd minúsculas — válido (moto Mercosur, normaliza)', () => expect(validarDominio('a123bcd').valido).toBe(true));
+  it('1A2345 — inválido (formato mezclado)', () => expect(validarDominio('1A2345').valido).toBe(false));
 });
 
 describe('normalizarDominio', () => {

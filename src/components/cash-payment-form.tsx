@@ -22,12 +22,13 @@ interface CashPaymentFormProps {
   permisionarioId: string;
   cuadra: string;
   zonaId: string;
+  initialDominio?: string;
   onSuccess?: (ticket: Ticket) => void;
 }
 
-export function CashPaymentForm({ permisionarioId, cuadra, zonaId, onSuccess }: CashPaymentFormProps) {
-  const [dominio, setDominio] = useState('');
-  const [dominioValido, setDominioValido] = useState(false);
+export function CashPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio, onSuccess }: CashPaymentFormProps) {
+  const [dominio, setDominio] = useState(initialDominio ?? '');
+  const [dominioValido, setDominioValido] = useState(!!initialDominio);
   const [tipo, setTipo] = useState<VehicleType>('auto');
   const [duracion, setDuracion] = useState(60);
   const [error, setError] = useState('');

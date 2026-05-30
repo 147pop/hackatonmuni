@@ -1,18 +1,22 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, CheckCircle, AlertTriangle, Timer, Search } from 'lucide-react';
+import { Clock, CheckCircle, AlertTriangle, Timer, ChevronDown, ChevronUp, CreditCard, Hourglass, QrCode } from 'lucide-react';
 import { ticketStore, observadoStore } from '@/lib/sem-store';
 import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
 import type { Ticket, VehiculoObservado } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
 import Link from 'next/link';
-import { PlateInput } from './plate-input';
 
 interface CuadraMonitorProps {
   permisionarioId: string;
   cuadra: string;
 }
+
+type VehiculoEntry =
+  | { kind: 'observado'; data: VehiculoObservado }
+  | { kind: 'activo'; data: TicketConEstado }
+  | { kind: 'vencido'; data: TicketConEstado };
 
 interface TicketConEstado extends Ticket {
   minRestantes: number;
@@ -42,13 +46,18 @@ function clasificar(tickets: Ticket[]): { activos: TicketConEstado[]; vencidos: 
   };
 }
 
+function formatHM(totalMin: number): string {
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
 export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
   const [activos, setActivos] = useState<TicketConEstado[]>([]);
   const [vencidos, setVencidos] = useState<TicketConEstado[]>([]);
   const [observados, setObservados] = useState<VehiculoObservado[]>([]);
   const [cerrando, setCerrando] = useState<string | null>(null);
-  const [patenteBusqueda, setPatenteBusqueda] = useState('');
-  const [patenteValida, setPatenteValida] = useState(false);
+  const [expandido, setExpandido] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     const tickets = ticketStore.getByPermisionarioCuadra(permisionarioId, cuadra);
@@ -56,13 +65,11 @@ export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
     setActivos(a);
     setVencidos(v);
 
-    // Filter out observados that already have an active/expired ticket
     const allObservados = observadoStore.getByPermisionarioCuadra(permisionarioId, cuadra);
-    const impagos = allObservados.filter((obs) => 
+    const impagos = allObservados.filter((obs) =>
       !a.some((t) => t.dominio.toUpperCase() === obs.dominio.toUpperCase()) &&
       !v.some((t) => t.dominio.toUpperCase() === obs.dominio.toUpperCase())
     );
-    // Sort by timestamp desc
     setObservados(impagos.sort((o1, o2) => new Date(o2.timestamp).getTime() - new Date(o1.timestamp).getTime()));
   }, [permisionarioId, cuadra]);
 
@@ -77,167 +84,257 @@ export function CuadraMonitor({ permisionarioId, cuadra }: CuadraMonitorProps) {
     ticketStore.update(ticketId, { activo: false });
     refresh();
     setCerrando(null);
+    setExpandido(null);
   }
 
   function handleQuitarObservado(dominio: string) {
     observadoStore.remove(dominio);
     refresh();
+    setExpandido(null);
   }
 
-  function handleRegistrar() {
-    if (!patenteValida) return;
-    observadoStore.create({
-      dominio: patenteBusqueda,
-      permisionarioId,
-      cuadra,
-    });
-    setPatenteBusqueda('');
-    setPatenteValida(false);
-    refresh();
+  function toggleExpansion(key: string) {
+    setExpandido((prev) => (prev === key ? null : key));
   }
 
+  const impagos: VehiculoEntry[] = [
+    ...observados.map((o) => ({ kind: 'observado' as const, data: o })),
+    ...vencidos.map((t) => ({ kind: 'vencido' as const, data: t })),
+  ];
+
+  const pagados: VehiculoEntry[] = [
+    ...activos.map((t) => ({ kind: 'activo' as const, data: t })),
+  ];
+
+  const total = impagos.length + pagados.length;
   const hayVencidos = vencidos.length > 0;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-          <Timer className="w-4 h-4" /> Mi cuadra en vivo
+        <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gris)' }}>
+          Vehículos en mi cuadra
         </h2>
-        {hayVencidos && (
-          <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-medium">
-            {vencidos.length} vencido{vencidos.length !== 1 ? 's' : ''}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {total > 0 && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: 'rgba(127,181,255,0.15)', color: 'var(--azul-vivo)' }}>
+              {total}
+            </span>
+          )}
+          {hayVencidos && (
+            <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full font-medium">
+              {vencidos.length} vencido{vencidos.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Buscador / Registro rápido */}
-      <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm space-y-3">
-        <PlateInput 
-          value={patenteBusqueda}
-          onChange={setPatenteBusqueda}
-          onValidChange={setPatenteValida}
-          label="Control de patente"
-        />
-        <button
-          onClick={handleRegistrar}
-          disabled={!patenteValida}
-          className="btn-xl w-full flex items-center justify-center gap-2 bg-municipal-600 hover:bg-municipal-700 disabled:bg-gray-200 disabled:text-gray-400 text-white transition-colors"
-        >
-          <Search className="w-5 h-5" />
-          Registrar llegada / Consultar
-        </button>
-      </div>
+      {total === 0 && (
+        <div className="flex flex-col items-center gap-2 py-6 text-center bg-gray-50 rounded-xl border border-gray-200">
+          <CheckCircle className="w-8 h-8 text-gray-300" />
+          <p className="text-sm text-gray-400">No hay vehículos registrados en tu cuadra ahora.</p>
+          <p className="text-xs text-gray-300">Registrá un vehículo con la patente arriba.</p>
+        </div>
+      )}
 
-      {/* Impagos (Observados) */}
-      {observados.length > 0 && (
+      {impagos.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-             Impagos / Recién llegados ({observados.length})
-          </p>
-          {observados.map((o) => {
-            const minEstacionado = Math.floor((Date.now() - new Date(o.timestamp).getTime()) / 60000);
-            return (
-              <div key={o.id} className="bg-white border border-gray-200 rounded-xl p-3 space-y-3 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-base font-bold font-mono text-gray-900">{o.dominio}</p>
-                    <p className="text-xs text-gray-500">
-                      Llegó hace {minEstacionado} min
-                    </p>
-                  </div>
-                  <span className={`text-sm font-bold ${minEstacionado > 5 ? 'text-red-600' : 'text-gray-600'}`}>
-                    {minEstacionado > 5 ? 'Sin ticket' : 'En tolerancia'}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Link
-                    href={`${ROUTES.permisionario.registrar}?dominio=${o.dominio}`}
-                    className="btn-xl bg-blue-50 text-blue-700 hover:bg-blue-100 flex items-center justify-center gap-1.5 text-sm font-medium transition-colors"
-                  >
-                    Cobrar
-                  </Link>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#b91c1c' }}>
+              Sin pagar ({impagos.length})
+            </h3>
+          </div>
+          {impagos.map((entry) => {
+            const key = entry.kind === 'observado'
+              ? `obs-${entry.data.id}`
+              : `tk-${entry.data.id}`;
+            const isOpen = expandido === key;
+
+            if (entry.kind === 'observado') {
+              const o = entry.data;
+              const minEstacionado = Math.floor((Date.now() - new Date(o.timestamp).getTime()) / 60000);
+              return (
+                <div key={key} className="bg-white border border-red-200 rounded-xl shadow-sm overflow-hidden">
                   <button
-                    onClick={() => handleQuitarObservado(o.dominio)}
-                    className="btn-xl bg-gray-50 hover:bg-gray-100 text-gray-600 flex items-center justify-center gap-1.5 text-sm transition-colors"
+                    onClick={() => toggleExpansion(key)}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-red-50/50 transition-colors"
                   >
-                    <CheckCircle className="w-4 h-4" />
-                    Se fue
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0 bg-red-500" />
+                      <div>
+                        <p className="text-base font-bold font-mono text-gray-900">{o.dominio}</p>
+                        <p className="text-xs text-red-600 font-medium">
+                          Debe {formatHM(minEstacionado)}hs
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold px-2 py-1 rounded-lg bg-red-100 text-red-700">
+                        Sin ticket
+                      </span>
+                      {isOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                    </div>
                   </button>
+                  {isOpen && (
+                    <div className="px-4 pb-3 pt-1 space-y-2 border-t border-red-100">
+                      <Link
+                        href={`${ROUTES.permisionario.registrar}?dominio=${o.dominio}`}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Cobrar efectivo
+                      </Link>
+                      <Link
+                        href={`${ROUTES.permisionario.cobrarQr}?dominio=${o.dominio}`}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                      >
+                        <QrCode className="w-4 h-4" />
+                        Cobrar con QR
+                      </Link>
+                      <Link
+                        href={`${ROUTES.permisionario.incumplimiento}?dominio=${o.dominio}`}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                        Registrar incumplimiento
+                      </Link>
+                      <button
+                        onClick={() => handleQuitarObservado(o.dominio)}
+                        className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Se fue
+                      </button>
+                    </div>
+                  )}
                 </div>
+              );
+            }
+
+            // vencido (impago)
+            const t = entry.data;
+            return (
+              <div key={key} className="bg-red-50 border border-red-200 rounded-xl shadow-sm overflow-hidden">
+                <button
+                  onClick={() => toggleExpansion(key)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-red-100/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-left">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0 bg-red-500" />
+                    <div>
+                      <p className="text-base font-bold font-mono text-gray-900">{t.dominio}</p>
+                      <p className="text-xs text-red-600 font-medium">
+                        Vencido — debe {formatHM(t.minutosExcedidos)}hs
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-lg">
+                      +{formatHM(t.minutosExcedidos)}hs
+                    </span>
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="px-4 pb-3 pt-1 space-y-2 border-t border-red-200">
+                    <Link
+                      href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      <Timer className="w-4 h-4" />
+                      Cobrar hora extra
+                    </Link>
+                    <Link
+                      href={`${ROUTES.permisionario.incumplimiento}?dominio=${t.dominio}`}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                    >
+                      <AlertTriangle className="w-4 h-4" />
+                      Registrar incumplimiento
+                    </Link>
+                    <button
+                      onClick={() => handleYaSeFue(t.id)}
+                      disabled={cerrando === t.id}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      {cerrando === t.id ? 'Cerrando…' : 'Ya se fue'}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Activos */}
-      {activos.length > 0 && (
+      {pagados.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Activos ({activos.length})</p>
-          {activos.map((t) => (
-            <div key={t.id} className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center justify-between">
-              <div>
-                <p className="text-base font-bold font-mono text-gray-900">{t.dominio}</p>
-                <p className="text-xs text-gray-500">{t.tipo === 'auto' ? 'Auto' : 'Moto'} · {t.duracionMinutos}min pagados</p>
-              </div>
-              <div className="text-right">
-                <div className={`flex items-center gap-1 font-mono text-sm font-bold ${t.minRestantes <= 5 ? 'text-amber-600' : 'text-green-700'}`}>
-                  <Clock className="w-3.5 h-3.5" />
-                  {t.minRestantes}min
-                </div>
-                {t.minRestantes <= 5 && (
-                  <p className="text-xs text-amber-600">¡Por vencer!</p>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#15803d' }}>
+              Al día ({pagados.length})
+            </h3>
+          </div>
+          {pagados.map((entry) => {
+            if (entry.kind !== 'activo') return null;
+            const key = `tk-${entry.data.id}`;
+            const isOpen = expandido === key;
+            const t = entry.data;
+            const horasPagadas = formatHM(t.duracionMinutos);
+            const horasRestantes = formatHM(t.minRestantes);
+            const proximoVencer = t.minRestantes <= 5;
+
+            return (
+              <div key={key} className="bg-green-50 border border-green-200 rounded-xl shadow-sm overflow-hidden">
+                <button
+                  onClick={() => toggleExpansion(key)}
+                  className="w-full px-4 py-3 flex items-center justify-between hover:bg-green-100/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-left">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0 bg-green-500" />
+                    <div>
+                      <p className="text-base font-bold font-mono text-gray-900">{t.dominio}</p>
+                      <p className="text-xs text-green-700 font-medium">
+                        Pagó {horasPagadas}hs · {t.tipo === 'auto' ? 'Auto' : 'Moto'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`flex items-center gap-1 font-mono text-sm font-bold ${proximoVencer ? 'text-amber-600' : 'text-green-700'}`}>
+                      <Clock className="w-3.5 h-3.5" />
+                      {horasRestantes}hs
+                    </div>
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="px-4 pb-3 pt-1 space-y-2 border-t border-green-200">
+                    {proximoVencer && (
+                      <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                        <Hourglass className="w-3.5 h-3.5" /> ¡Por vencer!
+                      </p>
+                    )}
+                    <Link
+                      href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      <Timer className="w-4 h-4" />
+                      Cobrar hora extra
+                    </Link>
+                    <button
+                      onClick={() => handleYaSeFue(t.id)}
+                      disabled={cerrando === t.id}
+                      className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      {cerrando === t.id ? 'Cerrando…' : 'Ya se fue'}
+                    </button>
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Vencidos */}
-      {vencidos.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-red-400 uppercase tracking-wide flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" /> Vencidos — ¿el auto sigue? ({vencidos.length})
-          </p>
-          {vencidos.map((t) => (
-            <div key={t.id} className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-base font-bold font-mono text-gray-900">{t.dominio}</p>
-                  <p className="text-xs text-gray-500">
-                    {t.tipo === 'auto' ? 'Auto' : 'Moto'} · venció hace {t.minutosExcedidos}min
-                  </p>
-                </div>
-                <span className="text-sm font-bold text-red-600">+{t.minutosExcedidos}min</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleYaSeFue(t.id)}
-                  disabled={cerrando === t.id}
-                  className="btn-xl bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center gap-1.5 text-sm"
-                >
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  Ya se fue
-                </button>
-                <Link
-                  href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`}
-                  className="btn-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center gap-1.5 text-sm"
-                >
-                  <AlertTriangle className="w-4 h-4" />
-                  Hora extra
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activos.length === 0 && vencidos.length === 0 && observados.length === 0 && (
-        <div className="flex flex-col items-center gap-2 py-6 text-center bg-gray-50 rounded-xl border border-gray-200">
-          <CheckCircle className="w-8 h-8 text-gray-300" />
-          <p className="text-sm text-gray-400">No hay vehículos registrados en tu cuadra ahora.</p>
+            );
+          })}
         </div>
       )}
     </div>
