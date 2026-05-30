@@ -205,6 +205,9 @@ function ComprobantesView() {
 
 function CuentaView() {
   const [loadingMp, setLoadingMp] = useState(false);
+  const deudaBase = 1500;
+  const descuento = deudaBase * 0.20; // 20% de descuento por pago digital según ordenanza
+  const totalAPagar = deudaBase - descuento;
 
   const handlePago = async () => {
     setLoadingMp(true);
@@ -212,11 +215,11 @@ function CuentaView() {
       const res = await fetch('/api/mercadopago/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 1500, title: 'Deuda por Infracción #4829 - Municipalidad de Salta' })
+        body: JSON.stringify({ amount: totalAPagar, title: 'Pago Digital de Deuda (Descuento 20% Aplicado) - Municipalidad de Salta' })
       });
       const data = await res.json();
       if (data.init_point) {
-        window.location.href = data.init_point; // Redirige a Mercado Pago
+        window.location.href = data.init_point;
       } else {
         alert(`Mercado Pago rechazó la operación:\n\n${data.error || 'Desconocido'}\nDetalle: ${data.details || ''}`);
       }
@@ -241,7 +244,7 @@ function CuentaView() {
       </div>
 
       <div className="adm-card" style={{ padding: '16px 14px', borderLeft: '4px solid #DC2626', marginTop: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <AlertCircle className="w-5 h-5" style={{ color: '#DC2626' }} />
           </div>
@@ -249,15 +252,26 @@ function CuentaView() {
             <p className="adm-act-title" style={{ color: '#DC2626' }}>Deuda Pendiente</p>
             <p className="adm-act-sub">Infracción #4829</p>
           </div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: '#DC2626' }}>$1.500</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: '#DC2626', textDecoration: 'line-through', opacity: 0.5 }}>${deudaBase}</span>
         </div>
+
+        <div style={{ background: '#F0FDF4', borderRadius: 8, padding: '10px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #BBF7D0' }}>
+          <div>
+            <span style={{ fontSize: 12, color: '#16A34A', fontWeight: 700, display: 'block' }}>DESCUENTO 20% (PAGO DIGITAL)</span>
+            <span style={{ fontSize: 11, color: '#15803D' }}>Según Ordenanza N.º 12.170</span>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: '#16A34A', display: 'block' }}>${totalAPagar}</span>
+          </div>
+        </div>
+
         <button 
           onClick={handlePago}
           disabled={loadingMp}
           className="adm-action-btn" 
           style={{ background: '#009EE3', color: '#fff', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: 14 }}
         >
-          {loadingMp ? 'Conectando...' : 'Pagar con Mercado Pago'}
+          {loadingMp ? 'Conectando...' : 'Pagar Deuda con Mercado Pago'}
         </button>
       </div>
 
