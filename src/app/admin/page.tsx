@@ -1,37 +1,25 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
-  Car, ParkingCircle, DollarSign, AlertTriangle, UserCheck, 
-  Map, FileText, BarChart3, TrendingUp, TrendingDown, ArrowRight
+  TrendingUp, MapPin, Car, AlertTriangle, Wallet, CheckCircle,
+  Menu, User, DollarSign, UserCheck, Activity
 } from 'lucide-react';
-import { RealtimeFeed } from '@/components/admin/realtime-feed';
-import { StatsChart } from '@/components/admin/stats-chart';
 
-// Importación dinámica del Heatmap para evitar errores de SSR con Leaflet
 const Heatmap = dynamic(() => import('@/components/admin/heatmap'), { 
   ssr: false, 
-  loading: () => <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-gray-100 animate-pulse text-gray-500 rounded-2xl">Cargando mapa...</div>
+  loading: () => <div className="w-full h-[200px] flex items-center justify-center bg-gray-100 animate-pulse text-gray-500 rounded-xl text-sm">Cargando mapa...</div>
 });
 
-const INITIAL_KPIS = [
-  { id: 'vehiculos', label: 'Vehículos registrados', value: '128.450', trend: '+12%', isPositive: true },
-  { id: 'estacionamientos', label: 'Estacionamientos hoy', value: '34.892', trend: '+8%', isPositive: true },
-  { id: 'recaudacion', label: 'Recaudación total', value: '$ 12.450.000', trend: '+15%', isPositive: true },
-  { id: 'deudas', label: 'Deudas pendientes', value: '3.245', trend: '+5%', isPositive: false },
-  { id: 'previsores', label: 'Permisionarios activos', value: '156', trend: '+3%', isPositive: true },
-];
-
-const ACCESOS_RAPIDOS = [
-  { href: '/admin/mapa', icon: Map, label: 'Mapa de calor', sub: 'Ver disponibilidad' },
-  { href: '/admin/vehiculos', icon: Car, label: 'Vehículos', sub: 'Gestionar vehículos' },
-  { href: '/admin/estacionamientos', icon: ParkingCircle, label: 'Estacionamientos', sub: 'Historial y comprobantes' },
-  { href: '/admin/infracciones', icon: AlertTriangle, label: 'Infracciones', sub: 'Consultar y pagar' },
-  { href: '/admin/tramites', icon: FileText, label: 'Trámites y servicios', sub: 'Todos los trámites' },
-  { href: '/admin/reportes', icon: BarChart3, label: 'Reportes', sub: 'Estadísticas y reportes' },
-];
+const INITIAL_KPIS = {
+  vehiculos: 128450,
+  estacionamientos: 34892,
+  recaudacion: 12450000,
+  deudas: 3245,
+  previsores: 156
+};
 
 export default function AdminDashboard() {
   const [kpis, setKpis] = useState(INITIAL_KPIS);
@@ -39,96 +27,133 @@ export default function AdminDashboard() {
   // Simulación de Realtime en KPIs
   useEffect(() => {
     const interval = setInterval(() => {
-      setKpis(prev => prev.map(kpi => {
-        if (kpi.id === 'estacionamientos') {
-          const val = parseInt(kpi.value.replace('.', '')) + Math.floor(Math.random() * 5);
-          return { ...kpi, value: val.toLocaleString('es-AR') };
-        }
-        if (kpi.id === 'recaudacion') {
-          const val = parseInt(kpi.value.replace('$ ', '').replace(/\./g, '')) + (Math.floor(Math.random() * 50) * 100);
-          return { ...kpi, value: `$ ${(val).toLocaleString('es-AR')}` };
-        }
-        return kpi;
+      setKpis(prev => ({
+        ...prev,
+        estacionamientos: prev.estacionamientos + Math.floor(Math.random() * 5),
+        recaudacion: prev.recaudacion + (Math.floor(Math.random() * 50) * 100)
       }));
     }, 8000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="space-y-6 lg:space-y-8 pb-8 max-w-7xl mx-auto">
-      {/* Title only visible on Desktop, since mobile has it on the Header */}
-      <div className="hidden md:block">
-        <h1 className="text-2xl font-display font-bold text-gray-900">Dashboard</h1>
+    <>
+      {/* Greeting */}
+      <div className="lc-greeting-card mb-3">
+        <div className="lc-avatar">
+          <User className="w-7 h-7" style={{ color: '#fff' }} />
+        </div>
+        <div className="lc-greeting-info">
+          <p className="lc-greeting-name">
+            Hola, <span className="lc-greeting-highlight">Administrador</span>
+          </p>
+          <Link href="/admin/configuracion" className="lc-ver-perfil">
+            Municipalidad de Salta &rsaquo;
+          </Link>
+        </div>
+        <button className="lc-hamburger">
+          <Menu className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* KPIs Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
-        {kpis.map((kpi, index) => (
-          <div 
-            key={kpi.id} 
-            className={`bg-white rounded-2xl border border-gray-200 p-4 shadow-sm flex flex-col justify-between
-            ${index === 2 ? 'col-span-2 md:col-span-1' : ''}`}
-          >
-            <p className="text-gray-500 text-xs lg:text-sm font-medium mb-2">{kpi.label}</p>
-            <h3 className="text-xl lg:text-2xl font-display font-bold text-gray-900 mb-2 truncate">{kpi.value}</h3>
-            <div className={`flex items-center gap-1 text-xs font-bold ${kpi.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-              {kpi.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {kpi.trend} <span className="text-gray-400 font-medium ml-1">vs ayer</span>
+      {/* Stats 2-col */}
+      <div className="lc-stats-grid mb-3">
+        {/* Resumen */}
+        <div className="lc-card">
+          <div className="lc-card-head">
+            <TrendingUp className="w-4 h-4" style={{ color: '#2563EB' }} />
+            <span className="lc-card-title">Resumen</span>
+          </div>
+          <StatRow icon={<Car className="w-4 h-4" />} iconBg="#EFF6FF" iconColor="#2563EB"
+            label="Vehículos reg." value={(kpis.vehiculos).toLocaleString('es-AR')} valueColor="#15181F" sub="+12% vs ayer" />
+          <StatRow icon={<CheckCircle className="w-4 h-4" />} iconBg="#F0FDF4" iconColor="#16A34A"
+            label="Estacionamientos" value={(kpis.estacionamientos).toLocaleString('es-AR')} valueColor="#16A34A" sub="hoy" />
+          <StatRow icon={<UserCheck className="w-4 h-4" />} iconBg="#EFF6FF" iconColor="#2563EB"
+            label="Permisionarios" value={kpis.previsores} valueColor="#2563EB" sub="activos" />
+        </div>
+
+        {/* Financiero */}
+        <div className="lc-card">
+          <div className="lc-card-head">
+            <Wallet className="w-4 h-4" style={{ color: '#2563EB' }} />
+            <span className="lc-card-title">Financiero</span>
+          </div>
+          <div className="flex flex-col gap-4 mt-2">
+            <div>
+              <div className="font-body text-[11px] text-[#686868] leading-tight">Recaudación total</div>
+              <div className="font-display font-extrabold text-[20px] text-[#2563EB] leading-tight mt-1">
+                $ {(kpis.recaudacion).toLocaleString('es-AR')}
+              </div>
+              <div className="font-body text-[10px] text-green-600 font-bold mt-0.5">+15% vs ayer</div>
+            </div>
+            
+            <div className="pt-2 border-t border-[#F1F5F9]">
+              <div className="font-body text-[11px] text-[#686868] leading-tight">Deudas pendientes</div>
+              <div className="font-display font-extrabold text-[18px] text-[#EA580C] leading-tight mt-1">
+                {kpis.deudas.toLocaleString('es-AR')}
+              </div>
+              <div className="font-body text-[10px] text-[#686868] mt-0.5">+5% vs ayer</div>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Heatmap Widget */}
-        <div className="lg:col-span-4 flex flex-col bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden min-h-[350px]">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-display font-bold text-gray-900 flex items-center gap-2">
-              Mapa de calor <span className="text-xs text-gray-400 font-normal">- Disponibilidad en tiempo real</span>
-            </h3>
-          </div>
-          <div className="flex-1 relative">
-            <Heatmap />
-          </div>
-          <div className="p-3 bg-gray-50 border-t border-gray-100 flex items-center justify-center gap-4 text-xs font-medium">
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#1A7A4A]"></span> Alta</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></span> Media</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#D97706]"></span> Baja</div>
-            <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#D93025]"></span> Muy baja</div>
-          </div>
-        </div>
-
-        {/* Stats Chart */}
-        <div className="lg:col-span-5 min-h-[350px]">
-          <StatsChart />
-        </div>
-
-        {/* Activity Feed */}
-        <div className="lg:col-span-3 min-h-[350px]">
-          <RealtimeFeed />
         </div>
       </div>
 
-      {/* Accesos Rápidos */}
-      <div>
-        <h3 className="font-display font-bold text-lg text-gray-900 mb-4">Accesos rápidos</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4">
-          {ACCESOS_RAPIDOS.map((acceso) => (
-            <Link 
-              key={acceso.href} 
-              href={acceso.href}
-              className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md hover:border-municipal-300 transition-all flex flex-col items-start gap-3 group"
-            >
-              <acceso.icon className="w-6 h-6 text-municipal-600 group-hover:scale-110 transition-transform" />
-              <div>
-                <p className="font-bold text-sm text-gray-900 leading-tight">{acceso.label}</p>
-                <p className="text-xs text-gray-500 mt-1 line-clamp-1">{acceso.sub}</p>
+      {/* Mapa de Calor */}
+      <div className="lc-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid rgba(21,50,111,0.07)' }}>
+        <div className="lc-card-head" style={{ padding: '14px 14px 10px' }}>
+          <MapPin className="w-4 h-4" style={{ color: '#2563EB' }} />
+          <span className="lc-card-title">Disponibilidad en tiempo real</span>
+        </div>
+        <div className="h-[250px] w-full relative border-t border-[#F1F5F9]">
+          <Heatmap />
+        </div>
+      </div>
+
+      {/* Actividad Reciente */}
+      <div className="lc-card mt-3">
+        <div className="lc-card-head mb-2">
+          <Activity className="w-4 h-4" style={{ color: '#2563EB' }} />
+          <span className="lc-card-title">Actividad Reciente</span>
+        </div>
+        <div className="flex flex-col gap-3">
+          {[
+            { id: 1, type: 'pago', text: 'Pago realizado', sub: 'ABC 123 - Zona Centro', time: 'Hace 2 min', val: '$60' },
+            { id: 2, type: 'nuevo', text: 'Nuevo estacionamiento', sub: 'DEF 456 - Zona Norte', time: 'Hace 5 min', val: '$50' },
+            { id: 3, type: 'infraccion', text: 'Infracción registrada', sub: 'GHI 789 - Exceso de tiempo', time: 'Hace 8 min', val: '$1.200', isRed: true },
+          ].map(act => (
+            <div key={act.id} className="flex justify-between items-center border-b border-[#F8FAFC] pb-2 last:border-0 last:pb-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${act.isRed ? 'bg-red-500' : 'bg-green-500'}`} />
+                <div>
+                  <p className="font-display font-bold text-[13px] text-[#15181F]">{act.text}</p>
+                  <p className="font-body text-[11px] text-[#686868]">{act.sub}</p>
+                </div>
               </div>
-            </Link>
+              <div className="text-right">
+                <p className="font-body text-[11px] text-[#686868]">{act.time}</p>
+                <p className={`font-display font-bold text-[13px] ${act.isRed ? 'text-red-600' : 'text-[#15181F]'}`}>{act.val}</p>
+              </div>
+            </div>
           ))}
         </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatRow({ icon, iconBg, iconColor, label, value, valueColor, sub }: {
+  icon: React.ReactNode; iconBg: string; iconColor: string;
+  label: string; value: string | number; valueColor: string; sub: string;
+}) {
+  return (
+    <div className="lc-stat-row">
+      <div className="lc-stat-icon" style={{ background: iconBg, color: iconColor }}>{icon}</div>
+      <div>
+        <div className="lc-stat-label">{label}</div>
+        <div className="lc-stat-value" style={{ color: valueColor, fontSize: 16 }}>{value}</div>
+        <div className="lc-stat-sub">{sub}</div>
       </div>
     </div>
   );
