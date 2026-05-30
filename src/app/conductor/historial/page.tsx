@@ -63,7 +63,7 @@ export default function HistorialPage() {
                       {new Date(t.inicio).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
                       {' · '}
                       {new Date(t.inicio).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                      {' · '}{t.duracionMinutos}min
+                      {' · '}{t.duracionMinutos}min (+5m tol.)
                     </p>
                     <p className="text-xs text-gray-400 font-mono">{t.numero}</p>
                   </div>

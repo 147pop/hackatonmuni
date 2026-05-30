@@ -59,6 +59,7 @@ export default function ConductorPage() {
             <div style={{ flex: 1 }}>
               <p className="adm-act-title">Estacionado · 45 min restantes</p>
               <p className="adm-act-sub">Independencia 700</p>
+              <p className="adm-act-sub" style={{ fontSize: 10, color: '#16A34A', marginTop: 2 }}>El tiempo corre tras 5 min de tolerancia</p>
             </div>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: '#16A34A' }}>45m</span>
           </div>
@@ -73,7 +74,7 @@ export default function ConductorPage() {
               <p className="adm-act-title" style={{ color: '#DC2626' }}>Deuda Pendiente</p>
               <p className="adm-act-sub">Multa por exceso de tiempo</p>
             </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color: '#DC2626' }}>$1.500</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color: '#DC2626' }}>$560</span>
           </div>
         </div>
       </div>
