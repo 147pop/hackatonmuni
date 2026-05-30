@@ -123,6 +123,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // The conductor pages have their own embedded mobile app layout
+  const isConductorApp = pathname === ROUTES.conductor.root || pathname.startsWith(ROUTES.conductor.root + '/');
+  if (isConductorApp) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-dvh flex flex-col">
       {/* ── Header institucional ── */}
