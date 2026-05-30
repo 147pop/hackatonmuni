@@ -220,8 +220,9 @@ function CuentaView() {
       } else {
         alert('Error conectando con Mercado Pago');
       }
-    } catch (err) {
-      alert('Error en el servidor');
+    } catch (err: any) {
+      console.error(err);
+      alert(`Error en el servidor: ${err.message || err.toString()}\n\n(Tip: Si acabamos de instalar Mercado Pago, por favor REINICIÁ la terminal donde corre Next.js - ctrl+c y npm run dev)`);
     } finally {
       setLoadingMp(false);
     }
