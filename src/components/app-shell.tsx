@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -9,6 +10,7 @@ import {
 import { RoleSwitcher } from './role-switcher';
 import { NotificationBell } from './notification-bell';
 import { ROUTES } from '@/lib/routes';
+import { initializeIfNeeded } from '@/lib/sem-store';
 
 interface NavItem {
   href: string;
@@ -102,6 +104,12 @@ function IsotipoSalta({ size = 24, className = '' }: { size?: number; className?
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    initializeIfNeeded();
+    setReady(true);
+  }, []);
+  if (!ready) return null;
   const navItems     = getNavForPath(pathname);
   const sidebarItems = getSidebarNavForPath(pathname);
   const isHome = pathname === '/';
@@ -126,6 +134,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // The conductor pages have their own embedded mobile app layout
   const isConductorApp = pathname === ROUTES.conductor.root || pathname.startsWith(ROUTES.conductor.root + '/');
   if (isConductorApp) {
+    return <>{children}</>;
+  }
+
+  // The portal pages have their own embedded mobile app layout
+  const isPortalApp = pathname === ROUTES.portal.root || pathname.startsWith(ROUTES.portal.root + '/');
+  if (isPortalApp) {
     return <>{children}</>;
   }
 

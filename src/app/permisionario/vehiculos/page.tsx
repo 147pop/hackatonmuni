@@ -214,7 +214,7 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
           />
         </div>
 
-        <div className="lc-filter-tabs">
+        <div className="lc-filter-pills">
           {([
             { id: 'encalle' as FilterTab, label: 'En calle' },
             { id: 'finalizados' as FilterTab, label: 'Finalizados' },
@@ -222,7 +222,7 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
           ]).map(({ id, label }) => (
             <button
               key={id}
-              className={`lc-filter-tab ${filter === id ? 'lc-filter-tab--active' : ''}`}
+              className={`lc-filter-pill ${filter === id ? 'lc-filter-pill--active' : ''}`}
               onClick={() => setFilter(id)}
             >
               {label}
@@ -645,10 +645,11 @@ const STYLES = `
     box-shadow: 0 2px 8px rgba(21,50,111,0.3);
   }
   .lc-logo {
-    height: 90px;
+    height: 63px;
     width: auto;
     display: block;
     object-fit: contain;
+    margin: 12px 0;
   }
   .lc-body {
     flex: 1;
@@ -782,29 +783,24 @@ const STYLES = `
   .lc-search-input:focus { border-color: #2563EB; }
   .lc-search-input::placeholder { color: #94A3B8; font-weight: 400; text-transform: none; }
 
-  .lc-filter-tabs {
+  .lc-filter-pills {
     display: flex;
-    gap: 6px;
+    gap: 8px;
   }
-  .lc-filter-tab {
+  .lc-filter-pill {
     font-family: var(--font-display);
     font-weight: 600;
     font-size: 12px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 1.5px solid #E2E8F0;
-    background: #fff;
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: none;
+    background: #F1F5F9;
     color: #64748B;
     cursor: pointer;
     transition: all 0.15s;
   }
-  .lc-filter-tab:hover {
-    border-color: #2563EB;
-    color: #2563EB;
-  }
-  .lc-filter-tab--active {
+  .lc-filter-pill--active {
     background: #2563EB;
-    border-color: #2563EB;
     color: #fff;
   }
 
@@ -841,7 +837,7 @@ const STYLES = `
 
   .lc-col-heads {
     display: grid;
-    grid-template-columns: 40px 1fr 50px 50px 32px;
+    grid-template-columns: 56px 1fr 50px 50px 32px;
     gap: 6px;
     padding: 0 4px 8px;
     border-bottom: 1.5px solid #F1F5F9;
@@ -853,14 +849,14 @@ const STYLES = `
     letter-spacing: 0.06em;
   }
   .lc-col-heads span:nth-child(1) { text-align: center; }
-  .lc-col-heads span:nth-child(2) { padding-left: 6px; }
+  .lc-col-heads span:nth-child(2) { padding-left: 0; }
   .lc-col-heads span:nth-child(3),
   .lc-col-heads span:nth-child(4) { text-align: center; }
   .lc-col-heads span:nth-child(5) { text-align: center; }
 
   .lc-row {
     display: grid;
-    grid-template-columns: 40px 1fr 50px 50px 32px;
+    grid-template-columns: 56px 1fr 50px 50px 32px;
     gap: 6px;
     align-items: center;
     padding: 10px 4px;
@@ -885,7 +881,7 @@ const STYLES = `
   .lc-dot--gray { background: #94A3B8; }
   .lc-dot--red { background: #DC2626; }
 
-  .lc-row-info { min-width: 0; padding-left: 6px; }
+  .lc-row-info { min-width: 0; padding-left: 0; }
   .lc-row-plate {
     display: block;
     font-family: var(--font-display);

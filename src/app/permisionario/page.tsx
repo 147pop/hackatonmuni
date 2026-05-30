@@ -10,7 +10,7 @@ import {
 import {
   permisionarioStore, roleStore, configStore,
   observadoStore, ticketStore, pagoStore, deudaStore,
-  estacionamientoStore,
+  estacionamientoStore, initializeIfNeeded,
 } from '@/lib/sem-store';
 import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
 import type { Permisionario, Ticket, VehiculoObservado } from '@/domain/types';
@@ -60,6 +60,7 @@ function PermisionarioPageContent() {
 
   useEffect(() => {
     try {
+      initializeIfNeeded();
       const id = roleStore.getActivePermisionarioId();
       if (id) setPerm(permisionarioStore.getById(id) ?? null);
     } catch (e) {
@@ -623,10 +624,11 @@ const STYLES = `
     box-shadow: 0 2px 8px rgba(21,50,111,0.3);
   }
   .lc-logo {
-    height: 90px;
+    height: 63px;
     width: auto;
     display: block;
     object-fit: contain;
+    margin: 12px 0;
   }
 
   /* ── Body ── */

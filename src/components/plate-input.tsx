@@ -140,7 +140,7 @@ export function PlateInput({
               onClick={() => setShowCamera(true)}
               disabled={disabled || scanning}
               title="Reconocimiento automático de patente (OCR)"
-              className="flex items-center gap-2 px-4 py-3 bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 rounded-xl text-amber-700 font-semibold text-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-3 bg-blue-50 hover:bg-blue-100 border-2 border-blue-300 rounded-xl text-blue-700 font-semibold text-sm transition-colors disabled:opacity-50"
             >
               {scanning
                 ? <ScanLine className="w-5 h-5 animate-pulse" />
@@ -153,7 +153,7 @@ export function PlateInput({
       </div>
 
       {scanning && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl flex items-center gap-2">
+        <p className="text-sm text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl flex items-center gap-2">
           <ScanLine className="w-4 h-4 animate-pulse" />
           {ocrStatus}
         </p>

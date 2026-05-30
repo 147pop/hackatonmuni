@@ -470,8 +470,8 @@ function CuentaView({ conductor, initialBanner }: { conductor: Conductor; initia
         alert(`MercadoPago rechazó la operación:\n\n${data.error || 'Desconocido'}\nDetalle: ${data.details || ''}`);
         setLoadingId(null);
       }
-    } catch (err: any) {
-      alert(`Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Error: ${(err as Error).message}`);
       setLoadingId(null);
     }
   };
@@ -659,8 +659,8 @@ function DeudasView({ conductor, initialBanner }: { conductor: Conductor; initia
         alert('MercadoPago rechazó la operación:\n\n' + (data.error || 'Desconocido'));
         setLoadingId(null);
       }
-    } catch (err: any) {
-      alert('Error: ' + err.message);
+    } catch (err: unknown) {
+      alert('Error: ' + (err as Error).message);
       setLoadingId(null);
     }
   };
@@ -880,7 +880,7 @@ function MenuBtn({ icon, label, color, onClick, badge }: { icon: React.ReactNode
   );
 }
 
-// ── Estilos inyectados ──────
+// ── Estilos inyectados (Idénticos a Admin y Permisionario) ─────
 const STYLES = `
   /* ── App shell ── */
   .lc-app {
@@ -906,10 +906,11 @@ const STYLES = `
     box-shadow: 0 2px 8px rgba(21,50,111,0.3);
   }
   .lc-logo {
-    height: 90px;
+    height: 63px;
     width: auto;
     display: block;
     object-fit: contain;
+    margin: 12px 0;
   }
 
   /* ── Body ── */
@@ -977,6 +978,11 @@ const STYLES = `
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+  .lc-legend {
+    display: flex; justify-content: center; gap: 14px;
+    padding: 10px; font-size: 11px; color: #686868;
+    font-family: var(--font-display); font-weight: 600;
   }
   .lc-card-head {
     display: flex;

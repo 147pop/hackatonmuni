@@ -539,10 +539,11 @@ const STYLES = `
     box-shadow: 0 2px 8px rgba(21,50,111,0.3);
   }
   .lc-logo {
-    height: 90px;
+    height: 63px;
     width: auto;
     display: block;
     object-fit: contain;
+    margin: 12px 0;
   }
 
   /* ── Body ── */

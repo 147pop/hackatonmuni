@@ -8,6 +8,7 @@ import {
   Settings, Map, ParkingCircle, CreditCard, Activity, ChevronRight,
   ArrowLeft, Menu
 } from 'lucide-react';
+import { initializeIfNeeded } from '@/lib/sem-store';
 
 const Heatmap = dynamic(() => import('@/components/admin/heatmap'), {
   ssr: false,
@@ -28,6 +29,10 @@ const INITIAL_KPIS = {
 export default function AdminDashboard() {
   const [view, setView] = useState<ViewMode>('home');
   const [kpis, setKpis] = useState(INITIAL_KPIS);
+
+  useEffect(() => {
+    initializeIfNeeded();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -477,10 +482,11 @@ const STYLES = `
     box-shadow: 0 2px 8px rgba(21,50,111,0.3);
   }
   .lc-logo {
-    height: 90px;
+    height: 63px;
     width: auto;
     display: block;
     object-fit: contain;
+    margin: 12px 0;
   }
 
   /* ── Body ── */

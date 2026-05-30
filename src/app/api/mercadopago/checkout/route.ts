@@ -45,10 +45,10 @@ export async function POST(req: NextRequest) {
       init_point: result.init_point, // Link oficial para redirigir al usuario
       sandbox_init_point: result.sandbox_init_point,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generando preferencia de pago:', error);
     return NextResponse.json(
-      { error: 'Error interno generando el link de pago', details: error.message },
+      { error: 'Error interno generando el link de pago', details: (error as Error).message },
       { status: 500 }
     );
   }
