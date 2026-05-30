@@ -179,9 +179,9 @@ function VehiculosView() {
 
 function ComprobantesView() {
   const comprobantes = [
-    { title: 'Estacionamiento - Independencia 700', date: '28 May 2026 · 14:30', amount: '$450' },
-    { title: 'Estacionamiento - Belgrano 1200', date: '25 May 2026 · 10:15', amount: '$300' },
-    { title: 'Estacionamiento - Caseros 800', date: '20 May 2026 · 16:45', amount: '$600' },
+    { title: 'Estacionamiento - Independencia 700', date: '28 May 2026 · 14:30', amount: '$560' },
+    { title: 'Estacionamiento - Belgrano 1200', date: '25 May 2026 · 10:15', amount: '$700' },
+    { title: 'Estacionamiento - Caseros 800', date: '20 May 2026 · 16:45', amount: '$1.120' },
   ];
   return (
     <>
