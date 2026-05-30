@@ -218,7 +218,7 @@ function CuentaView() {
       if (data.init_point) {
         window.location.href = data.init_point; // Redirige a Mercado Pago
       } else {
-        alert('Error conectando con Mercado Pago');
+        alert(`Mercado Pago rechazó la operación:\n\n${data.error || 'Desconocido'}\nDetalle: ${data.details || ''}`);
       }
     } catch (err: any) {
       console.error(err);
