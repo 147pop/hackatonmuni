@@ -96,15 +96,15 @@ type Box = {
 const initialBoxes: Box[] = [];
 cuadras.forEach(cuadra => {
   ['norte', 'sur'].forEach(lado => {
-      let totalBoxes = getTotalBoxes(cuadra.num, lado);
-      let espacioTotal = cuadra.endLon - cuadra.startLon;
-      let espacioPorBox = espacioTotal / totalBoxes;
-      let lonSizeLocal = espacioPorBox * 0.95;
-      let lonGapLocal = espacioPorBox * 0.05;
+      const totalBoxes = getTotalBoxes(cuadra.num, lado);
+      const espacioTotal = cuadra.endLon - cuadra.startLon;
+      const espacioPorBox = espacioTotal / totalBoxes;
+      const lonSizeLocal = espacioPorBox * 0.95;
+      const lonGapLocal = espacioPorBox * 0.05;
       let currentLon = cuadra.startLon;
       
       for (let i = 0; i < totalBoxes; i++) {
-          let tipo = asignarTipoFijo(i, lado, cuadra.num);
+          const tipo = asignarTipoFijo(i, lado, cuadra.num);
           initialBoxes.push({
               id: `box-${cuadra.num}-${lado}-${i}`,
               cuadra: cuadra.num, lado: lado, lonBase: currentLon, lonSize: lonSizeLocal,
@@ -153,11 +153,11 @@ function CuadrasLayer() {
       {boxes.map(box => {
         if (box.estado === 'calle') return null;
 
-        let latCentro1 = getCentroLat(box.lonBase);
-        let latCentro2 = getCentroLat(box.lonBase + box.lonSize);
+        const latCentro1 = getCentroLat(box.lonBase);
+        const latCentro2 = getCentroLat(box.lonBase + box.lonSize);
         
-        let p1 = map.project([latCentro1, box.lonBase]);
-        let p2 = map.project([latCentro2, box.lonBase + box.lonSize]);
+        const p1 = map.project([latCentro1, box.lonBase]);
+        const p2 = map.project([latCentro2, box.lonBase + box.lonSize]);
 
         const pixelOffset = 6;
         if (box.lado === 'norte') {
@@ -168,8 +168,8 @@ function CuadrasLayer() {
             p2.y += pixelOffset;
         }
 
-        let ll1 = map.unproject(p1);
-        let ll2 = map.unproject(p2);
+        const ll1 = map.unproject(p1);
+        const ll2 = map.unproject(p2);
         
         const weight = zoomLevel >= 19 ? 5 : 4;
         const color = colores[box.estado as keyof typeof colores] || colores.libre;
@@ -181,7 +181,7 @@ function CuadrasLayer() {
             color={color}
             weight={weight}
             opacity={1}
-            pathOptions={{ transition: 'stroke 0.6s ease' } as any}
+            pathOptions={{ transition: 'stroke 0.6s ease' } as Record<string, string>}
           />
         );
       })}

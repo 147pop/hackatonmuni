@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Car, Clock, TrendingUp, CheckCircle,
+  Car, Clock, TrendingUp,
   AlertTriangle, AlertCircle, MapPin, DollarSign,
   LayoutGrid, BarChart3, MoreHorizontal, User, Menu,
-  ChevronDown, ChevronUp, Smartphone, Banknote,
+  Smartphone, Banknote, Search,
 } from 'lucide-react';
 import { db } from '@/lib/db';
-import type { Permisionario, Estacionamiento, Deuda, VehiculoObservado } from '@/domain/types';
+import { ticketStore, observadoStore, roleStore } from '@/lib/sem-store';
+import type { Permisionario, Ticket, VehiculoObservado, Deuda } from '@/domain/types';
 import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
 import { ROUTES } from '@/lib/routes';
 
@@ -33,6 +34,12 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 type FilterTab = 'encalle' | 'finalizados' | 'todos';
 
+type VehRow =
+  | { kind: 'activo'; ticket: Ticket & { minRestantes: number } }
+  | { kind: 'vencido'; ticket: Ticket & { minutosExcedidos: number } }
+  | { kind: 'observado'; obs: VehiculoObservado }
+  | { kind: 'finalizado'; ticket: Ticket };
+
 function fmt(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -55,6 +62,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   vencido: { label: 'Vencido', color: '#EA580C', bg: '#FFF7ED', dot: 'lc-dot--orange' },
   finalizado: { label: 'Finalizado', color: '#64748B', bg: '#F8FAFC', dot: 'lc-dot--gray' },
   incumplimiento: { label: 'Incumpl.', color: '#DC2626', bg: '#FEF2F2', dot: 'lc-dot--orange' },
+  observado: { label: 'Sin ticket', color: '#EA580C', bg: '#FFF7ED', dot: 'lc-dot--orange' },
 };
 
 export default function VehiculosPage() {
@@ -99,44 +107,58 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
   const cuadra = perm.cuadraAsignada;
   const [filter, setFilter] = useState<FilterTab>('encalle');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [historial, setHistorial] = useState<Estacionamiento[]>([]);
+  const [historial, setHistorial] = useState<(Ticket | VehiculoObservado)[]>([]);
   const [deudasExpandidas, setDeudasExpandidas] = useState<Deuda[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const [estacionamientos, setEstacionamientos] = useState<Estacionamiento[]>([]);
-  const [loading, setLoading] = useState(true);
+  const allTickets = ticketStore.getAll().filter((t) => t.permisionarioId === perm.id && t.cuadra === cuadra);
+  const activeTickets = allTickets.filter((t) => t.activo);
+  const observados = observadoStore.getByPermisionarioCuadra(perm.id, cuadra);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await db.estacionamientos.getByPermisionarioCuadra(perm.id, cuadra);
-        setEstacionamientos(data);
-      } catch (err) {
-        console.error('Error loading estacionamientos:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [perm.id, cuadra]);
+  const now = Date.now();
+  const rows: VehRow[] = [
+    ...observados.map((obs) => ({ kind: 'observado' as const, obs })),
+    ...activeTickets.map((t) => {
+      const minRestantes = calcularTiempoRestanteMinutos(t.vencimiento);
+      const minutosExcedidos = Math.max(0, Math.floor((now - new Date(t.vencimiento).getTime()) / 60000));
+      return minRestantes > 0
+        ? { kind: 'activo' as const, ticket: { ...t, minRestantes } }
+        : { kind: 'vencido' as const, ticket: { ...t, minutosExcedidos } };
+    }),
+  ];
 
-  const filtered = estacionamientos.filter((e) => {
-    if (filter === 'encalle') return e.activo;
-    if (filter === 'finalizados') return !e.activo;
+  const finalizedTickets = allTickets.filter((t) => !t.activo);
+
+  const filtered = rows.filter((row) => {
+    const dominio = row.kind === 'observado' ? row.obs.dominio : row.ticket.dominio;
+    if (searchQuery && !dominio.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (filter === 'encalle') return true;
+    if (filter === 'finalizados') return false;
     return true;
   });
 
-  async function handleExpand(e: Estacionamiento) {
-    if (expandedId === e.id) {
+  const finalizedFiltered = finalizedTickets.filter((t) =>
+    !searchQuery || t.dominio.toLowerCase().includes(searchQuery.toLowerCase())
+  ).sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime());
+
+  const allRows: (VehRow | { kind: 'finalizado'; ticket: Ticket })[] = filter === 'finalizados'
+    ? finalizedFiltered.map((t) => ({ kind: 'finalizado' as const, ticket: t }))
+    : filtered;
+
+  async function handleExpand(row: RowItem) {
+    const rowId = row.kind === 'observado' ? row.obs.id : row.ticket.id;
+    if (expandedId === rowId) {
       setExpandedId(null);
       return;
     }
-    setExpandedId(e.id);
-    const [hist, deudas] = await Promise.all([
-      db.estacionamientos.getByDominio(e.dominio),
-      db.deudas.getByDominio(e.dominio),
+    setExpandedId(rowId);
+    const dominio = row.kind === 'observado' ? row.obs.dominio : row.ticket.dominio;
+    const [domTickets, domDeudas] = await Promise.all([
+      db.tickets.getByDominio(dominio),
+      db.deudas.getByDominio(dominio),
     ]);
-    setHistorial(hist);
-    setDeudasExpandidas(deudas.filter((d) => d.estado === 'pendiente'));
+    setHistorial(domTickets);
+    setDeudasExpandidas(domDeudas.filter((d) => d.estado === 'pendiente'));
   }
 
   return (
@@ -163,7 +185,7 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
           </div>
           <button
             className="lc-hamburger"
-            onClick={() => { db.role.setActivePermisionarioId(null); window.location.reload(); }}
+            onClick={() => { roleStore.setActivePermisionarioId(null); window.location.reload(); }}
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -173,12 +195,23 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
           <div className="lc-card-head">
             <Car className="w-4 h-4" style={{ color: '#2563EB' }} />
             <span className="lc-card-title">Vehículos en tu cuadra</span>
-            <span className="lc-veh-count">{estacionamientos.length}</span>
+            <span className="lc-veh-count">{rows.length}</span>
           </div>
           <div className="lc-cuadra-sel" style={{ marginTop: 8 }}>
             <MapPin className="w-3 h-3" style={{ color: '#2563EB', flexShrink: 0 }} />
             <span className="lc-cuadra-sel-text">{cuadra}</span>
           </div>
+        </div>
+
+        <div className="lc-search-container">
+          <Search className="w-4 h-4 lc-search-icon" />
+          <input
+            type="text"
+            placeholder="Buscar patente..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="lc-search-input"
+          />
         </div>
 
         <div className="lc-filter-tabs">
@@ -197,14 +230,7 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
           ))}
         </div>
 
-        {loading ? (
-          <div className="lc-table-card">
-            <div className="lc-empty">
-              <div className="lc-spinner" />
-              <p>Cargando vehículos...</p>
-            </div>
-          </div>
-        ) : filtered.length === 0 ? (
+        {allRows.length === 0 ? (
           <div className="lc-table-card">
             <TableHeader count={0} />
             <div className="lc-empty">
@@ -216,7 +242,7 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
         ) : (
           <>
             <div className="lc-table-card">
-              <TableHeader count={filtered.length} />
+              <TableHeader count={allRows.length} />
               <div className="lc-col-heads">
                 <span>Estado</span>
                 <span>Patente</span>
@@ -225,50 +251,107 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
                 <span>Pago</span>
               </div>
 
-              {filtered.map((e) => {
-                const st = getEstacionamientoStatus(e);
+              {allRows.map((row) => {
+                if (row.kind === 'observado') {
+                  const obs = row.obs;
+                  const cfg = STATUS_CONFIG.observado;
+                  const isExpanded = expandedId === obs.id;
+
+                  return (
+                    <div key={obs.id}>
+                      <div
+                        className="lc-row lc-row--clickable"
+                        onClick={() => handleExpand(row as VehRow)}
+                      >
+                        <span className={`lc-dot ${cfg.dot}`} />
+                        <div className="lc-row-info">
+                          <span className="lc-row-plate">{obs.dominio}</span>
+                          <span className="lc-row-model lc-row-model--orange">Sin ticket</span>
+                        </div>
+                        <span className="lc-time">{fmt(obs.timestamp)}</span>
+                        <span className="lc-time lc-time--muted">–</span>
+                        <span className="lc-pay-badge lc-pay-badge--efectivo">
+                          <Banknote className="w-3 h-3" />
+                        </span>
+                      </div>
+
+                      {isExpanded && (
+                        <ExpandedObservadoDetail obs={obs} deudas={deudasExpandidas} cfg={cfg} />
+                      )}
+                    </div>
+                  );
+                }
+
+                if (row.kind === 'finalizado') {
+                  const t = row.ticket;
+                  const cfg = STATUS_CONFIG.finalizado;
+                  const isExpanded = expandedId === t.id;
+
+                  return (
+                    <div key={t.id}>
+                      <div
+                        className="lc-row lc-row--clickable"
+                        onClick={() => handleExpand({ kind: 'finalizado', ticket: t })}
+                      >
+                        <span className={`lc-dot ${cfg.dot}`} />
+                        <div className="lc-row-info">
+                          <span className="lc-row-plate">{t.dominio}</span>
+                          <span className="lc-row-model lc-row-model--gray">
+                            {t.tipo === 'auto' ? 'Auto' : 'Moto'}
+                          </span>
+                        </div>
+                        <span className="lc-time">{fmt(t.inicio)}</span>
+                        <span className="lc-time lc-time--muted">–</span>
+                        <span className={`lc-pay-badge ${t.metodoPago === 'digital' ? 'lc-pay-badge--digital' : 'lc-pay-badge--efectivo'}`}>
+                          {t.metodoPago === 'digital' ? <Smartphone className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                        </span>
+                      </div>
+
+                      {isExpanded && (
+                        <ExpandedFinalizadoDetail ticket={t} historial={historial} deudas={deudasExpandidas} cfg={cfg} />
+                      )}
+                    </div>
+                  );
+                }
+
+                const t = row.ticket;
+                const st = row.kind === 'activo' ? 'activo' : 'vencido';
                 const cfg = STATUS_CONFIG[st] ?? STATUS_CONFIG.finalizado;
-                const isExpanded = expandedId === e.id;
+                const isExpanded = expandedId === t.id;
 
                 return (
-                  <div key={e.id}>
+                  <div key={t.id}>
                     <div
                       className="lc-row lc-row--clickable"
-                      onClick={() => handleExpand(e)}
+                      onClick={() => handleExpand(row as VehRow)}
                     >
                       <span className={`lc-dot ${cfg.dot}`} />
                       <div className="lc-row-info">
-                        <span className="lc-row-plate">{e.dominio}</span>
-                        <span className={`lc-row-model ${st === 'vencido' || st === 'incumplimiento' ? 'lc-row-model--orange' : 'lc-row-model--gray'}`}>
-                          {e.tipo === 'auto' ? 'Auto' : 'Moto'}
+                        <span className="lc-row-plate">{t.dominio}</span>
+                        <span className={`lc-row-model ${st === 'vencido' ? 'lc-row-model--orange' : 'lc-row-model--gray'}`}>
+                          {t.tipo === 'auto' ? 'Auto' : 'Moto'}
                         </span>
                       </div>
-                      <span className="lc-time">{fmt(e.inicio)}</span>
-                      <span className={`lc-time ${st === 'vencido' ? 'lc-time--red' : st === 'finalizado' ? 'lc-time--muted' : ''}`}>
-                        {e.fin ? fmt(e.fin) : '–'}
+                      <span className="lc-time">{fmt(t.inicio)}</span>
+                      <span className={`lc-time ${st === 'vencido' ? 'lc-time--red' : ''}`}>
+                        {fmt(t.vencimiento)}
                       </span>
-                      <span className={`lc-pay-badge ${e.metodoPago === 'digital' ? 'lc-pay-badge--digital' : 'lc-pay-badge--efectivo'}`}>
-                        {e.metodoPago === 'digital' ? <Smartphone className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                      <span className={`lc-pay-badge ${t.metodoPago === 'digital' ? 'lc-pay-badge--digital' : 'lc-pay-badge--efectivo'}`}>
+                        {t.metodoPago === 'digital' ? <Smartphone className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
                       </span>
                     </div>
 
                     {isExpanded && (
-                      <ExpandedDetail
-                        estacionamiento={e}
-                        historial={historial}
-                        deudas={deudasExpandidas}
-                        status={st}
-                        cfg={cfg}
-                      />
+                      <ExpandedTicketDetail ticket={t} historial={historial} deudas={deudasExpandidas} cfg={cfg} row={row as VehRow} />
                     )}
                   </div>
                 );
               })}
             </div>
 
-            {filtered.length > 5 && (
+            {allRows.length > 5 && (
               <p className="lc-showing-info">
-                Mostrando {filtered.length} estacionamiento{filtered.length !== 1 ? 's' : ''}
+                Mostrando {allRows.length} vehículo{allRows.length !== 1 ? 's' : ''}
               </p>
             )}
           </>
@@ -297,42 +380,14 @@ function VehiculosDashboard({ perm }: { perm: Permisionario }) {
   );
 }
 
-function getEstacionamientoStatus(e: Estacionamiento): string {
-  if (!e.activo) {
-    if (e.fin) return 'finalizado';
-    return 'incumplimiento';
-  }
-  const remaining = calcularTiempoRestanteMinutos(e.fin ?? e.inicio);
-  if (remaining <= 0) return 'vencido';
-  return 'activo';
-}
-
-function TableHeader({ count }: { count: number }) {
-  return (
-    <div className="lc-table-head">
-      <div className="lc-table-title">
-        <Car className="w-4 h-4" style={{ color: '#2563EB' }} />
-        <span>Últimos vehículos</span>
-      </div>
-      <span className="lc-table-badge">{count}</span>
-    </div>
-  );
-}
-
-function ExpandedDetail({
-  estacionamiento: e,
-  historial,
-  deudas,
-  status,
-  cfg,
-}: {
-  estacionamiento: Estacionamiento;
-  historial: Estacionamiento[];
+function ExpandedTicketDetail({ ticket: t, historial, deudas, cfg, row }: {
+  ticket: Ticket & { minRestantes?: number; minutosExcedidos?: number };
+  historial: (Ticket | VehiculoObservado)[];
   deudas: Deuda[];
-  status: string;
   cfg: { label: string; color: string; bg: string };
+  row: VehRow;
 }) {
-  const remaining = e.activo ? calcularTiempoRestanteMinutos(e.fin ?? e.inicio) : 0;
+  const remaining = row.kind === 'activo' ? (row.ticket).minRestantes ?? calcularTiempoRestanteMinutos(t.vencimiento) : 0;
 
   return (
     <div className="lc-expand-panel">
@@ -340,10 +395,16 @@ function ExpandedDetail({
         <span className="lc-expand-status-badge" style={{ background: cfg.bg, color: cfg.color }}>
           {cfg.label}
         </span>
-        {e.activo && remaining > 0 && (
+        {row.kind === 'activo' && remaining > 0 && (
           <span className="lc-expand-time-left">
             <Clock className="w-3 h-3" style={{ color: cfg.color }} />
             {remaining < 60 ? `${remaining} min restantes` : `${Math.floor(remaining / 60)}h ${remaining % 60}m restantes`}
+          </span>
+        )}
+        {row.kind === 'vencido' && (
+          <span className="lc-expand-time-left" style={{ color: '#DC2626' }}>
+            <AlertTriangle className="w-3 h-3" style={{ color: '#DC2626' }} />
+            Vencido
           </span>
         )}
       </div>
@@ -351,19 +412,19 @@ function ExpandedDetail({
       <div className="lc-expand-info-grid">
         <div className="lc-expand-info-item">
           <span className="lc-expand-info-label">Duración</span>
-          <span className="lc-expand-info-value">{fmtDuration(e.duracionMinutos)}</span>
+          <span className="lc-expand-info-value">{fmtDuration(t.duracionMinutos)}</span>
         </div>
         <div className="lc-expand-info-item">
           <span className="lc-expand-info-label">Método</span>
-          <span className="lc-expand-info-value">{e.metodoPago === 'digital' ? 'Digital' : 'Efectivo'}</span>
+          <span className="lc-expand-info-value">{t.metodoPago === 'digital' ? 'Digital' : 'Efectivo'}</span>
         </div>
         <div className="lc-expand-info-item">
           <span className="lc-expand-info-label">Inicio</span>
-          <span className="lc-expand-info-value">{fmt(e.inicio)}</span>
+          <span className="lc-expand-info-value">{fmt(t.inicio)}</span>
         </div>
         <div className="lc-expand-info-item">
-          <span className="lc-expand-info-label">Fin</span>
-          <span className="lc-expand-info-value">{e.fin ? fmt(e.fin) : '–'}</span>
+          <span className="lc-expand-info-label">Vencimiento</span>
+          <span className="lc-expand-info-value">{fmt(t.vencimiento)}</span>
         </div>
       </div>
 
@@ -390,14 +451,16 @@ function ExpandedDetail({
             <span>Historial ({historial.length})</span>
           </div>
           <div className="lc-expand-timeline">
-            {historial.slice(0, 5).map((h, i) => {
-              const hst = getEstacionamientoStatus(h);
+            {historial.slice(0, 5).map((h) => {
+              const isObs = 'timestamp' in h && !('inicio' in h);
+              const hst = isObs ? 'observado' : getTicketStatus(h as Ticket);
               const hcfg = STATUS_CONFIG[hst] ?? STATUS_CONFIG.finalizado;
+              const hInicio = isObs ? (h as VehiculoObservado).timestamp : (h as Ticket).inicio;
               return (
                 <div key={h.id} className="lc-expand-timeline-row">
                   <span className={`lc-dot ${hcfg.dot}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
-                  <span className="lc-expand-timeline-date">{fmtDate(h.inicio)}</span>
-                  <span className="lc-expand-timeline-time">{fmt(h.inicio)} – {h.fin ? fmt(h.fin) : '–'}</span>
+                  <span className="lc-expand-timeline-date">{fmtDate(hInicio)}</span>
+                  <span className="lc-expand-timeline-time">{fmt(hInicio)}</span>
                   <span className="lc-expand-timeline-status" style={{ color: hcfg.color }}>{hcfg.label}</span>
                 </div>
               );
@@ -408,6 +471,154 @@ function ExpandedDetail({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ExpandedObservadoDetail({ obs, deudas, cfg }: {
+  obs: VehiculoObservado;
+  deudas: Deuda[];
+  cfg: { label: string; color: string; bg: string };
+}) {
+  return (
+    <div className="lc-expand-panel">
+      <div className="lc-expand-status-row">
+        <span className="lc-expand-status-badge" style={{ background: cfg.bg, color: cfg.color }}>
+          {cfg.label}
+        </span>
+        <span className="lc-expand-time-left" style={{ color: '#EA580C' }}>
+          <AlertCircle className="w-3 h-3" style={{ color: '#EA580C' }} />
+          Sin ticket de estacionamiento
+        </span>
+      </div>
+
+      <div className="lc-expand-info-grid">
+        <div className="lc-expand-info-item">
+          <span className="lc-expand-info-label">Observado desde</span>
+          <span className="lc-expand-info-value">{fmt(obs.timestamp)}</span>
+        </div>
+        <div className="lc-expand-info-item">
+          <span className="lc-expand-info-label">Cuadra</span>
+          <span className="lc-expand-info-value">{obs.cuadra}</span>
+        </div>
+      </div>
+
+      {deudas.length > 0 && (
+        <div className="lc-expand-section">
+          <div className="lc-expand-section-head">
+            <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#EA580C' }} />
+            <span>Deudas pendientes</span>
+            <span className="lc-expand-section-badge lc-expand-section-badge--red">{deudas.length}</span>
+          </div>
+          {deudas.map((d) => (
+            <div key={d.id} className="lc-expand-deuda-row">
+              <span>{d.tipo === 'hora_extra' ? 'Hora extra' : 'Incumplimiento'}</span>
+              <span className="lc-expand-deuda-monto">${d.monto.toLocaleString('es-AR')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type RowItem = VehRow | { kind: 'finalizado'; ticket: Ticket };
+
+function ExpandedFinalizadoDetail({ ticket: t, historial, deudas, cfg }: {
+  ticket: Ticket;
+  historial: (Ticket | VehiculoObservado)[];
+  deudas: Deuda[];
+  cfg: { label: string; color: string; bg: string };
+}) {
+  return (
+    <div className="lc-expand-panel">
+      <div className="lc-expand-status-row">
+        <span className="lc-expand-status-badge" style={{ background: cfg.bg, color: cfg.color }}>
+          {cfg.label}
+        </span>
+      </div>
+
+      <div className="lc-expand-info-grid">
+        <div className="lc-expand-info-item">
+          <span className="lc-expand-info-label">Duración</span>
+          <span className="lc-expand-info-value">{fmtDuration(t.duracionMinutos)}</span>
+        </div>
+        <div className="lc-expand-info-item">
+          <span className="lc-expand-info-label">Método</span>
+          <span className="lc-expand-info-value">{t.metodoPago === 'digital' ? 'Digital' : 'Efectivo'}</span>
+        </div>
+        <div className="lc-expand-info-item">
+          <span className="lc-expand-info-label">Inicio</span>
+          <span className="lc-expand-info-value">{fmt(t.inicio)}</span>
+        </div>
+        <div className="lc-expand-info-item">
+          <span className="lc-expand-info-label">Vencimiento</span>
+          <span className="lc-expand-info-value">{fmt(t.vencimiento)}</span>
+        </div>
+      </div>
+
+      {deudas.length > 0 && (
+        <div className="lc-expand-section">
+          <div className="lc-expand-section-head">
+            <AlertTriangle className="w-3.5 h-3.5" style={{ color: '#EA580C' }} />
+            <span>Deudas pendientes</span>
+            <span className="lc-expand-section-badge lc-expand-section-badge--red">{deudas.length}</span>
+          </div>
+          {deudas.map((d) => (
+            <div key={d.id} className="lc-expand-deuda-row">
+              <span>{d.tipo === 'hora_extra' ? 'Hora extra' : 'Incumplimiento'}</span>
+              <span className="lc-expand-deuda-monto">${d.monto.toLocaleString('es-AR')}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {historial.length > 1 && (
+        <div className="lc-expand-section">
+          <div className="lc-expand-section-head">
+            <TrendingUp className="w-3.5 h-3.5" style={{ color: '#2563EB' }} />
+            <span>Historial ({historial.length})</span>
+          </div>
+          <div className="lc-expand-timeline">
+            {historial.slice(0, 5).map((h) => {
+              const isObs = 'timestamp' in h && !('inicio' in h);
+              const hst = isObs ? 'observado' : getTicketStatus(h as Ticket);
+              const hcfg = STATUS_CONFIG[hst] ?? STATUS_CONFIG.finalizado;
+              const hInicio = isObs ? (h as VehiculoObservado).timestamp : (h as Ticket).inicio;
+              return (
+                <div key={h.id} className="lc-expand-timeline-row">
+                  <span className={`lc-dot ${hcfg.dot}`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+                  <span className="lc-expand-timeline-date">{fmtDate(hInicio)}</span>
+                  <span className="lc-expand-timeline-time">{fmt(hInicio)}</span>
+                  <span className="lc-expand-timeline-status" style={{ color: hcfg.color }}>{hcfg.label}</span>
+                </div>
+              );
+            })}
+            {historial.length > 5 && (
+              <span className="lc-expand-timeline-more">+{historial.length - 5} más</span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getTicketStatus(t: Ticket): string {
+  if (!t.activo) return 'finalizado';
+  const remaining = calcularTiempoRestanteMinutos(t.vencimiento);
+  if (remaining <= 0) return 'vencido';
+  return 'activo';
+}
+
+function TableHeader({ count }: { count: number }) {
+  return (
+    <div className="lc-table-head">
+      <div className="lc-table-title">
+        <Car className="w-4 h-4" style={{ color: '#2563EB' }} />
+        <span>Vehículos</span>
+      </div>
+      <span className="lc-table-badge">{count}</span>
     </div>
   );
 }
@@ -540,6 +751,36 @@ const STYLES = `
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  .lc-search-container {
+    position: relative;
+    margin: 4px 0;
+  }
+  .lc-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+  }
+  .lc-search-input {
+    width: 100%;
+    background: #fff;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 10px 14px 10px 36px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 14px;
+    color: #15181F;
+    text-transform: uppercase;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+    box-shadow: 0 1px 4px rgba(21,50,111,0.04);
+  }
+  .lc-search-input:focus { border-color: #2563EB; }
+  .lc-search-input::placeholder { color: #94A3B8; font-weight: 400; text-transform: none; }
 
   .lc-filter-tabs {
     display: flex;

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Car, Clock, TrendingUp, CheckCircle,
-  Bell, AlertCircle, MapPin, Smartphone, Banknote,
-  LayoutGrid, DollarSign, BarChart3, MoreHorizontal, User, ChevronRight, Menu
+  AlertCircle, AlertTriangle, MapPin, Smartphone, Banknote,
+  LayoutGrid, DollarSign, BarChart3, MoreHorizontal, User, Menu
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import type { Permisionario, Ticket, Pago, VehiculoObservado } from '@/domain/types';
@@ -131,6 +131,11 @@ function DashboardResumen({ perm }: { perm: Permisionario }) {
   const tasaPago = totalPagosImpagos > 0 ? Math.round((pagosRealizados / totalPagosImpagos) * 100) : 0;
   const tasaImpago = totalPagosImpagos > 0 ? Math.round((impagosTotal / totalPagosImpagos) * 100) : 0;
 
+  const proximosAVencer = todosTickets.filter(t => {
+    const min = calcularTiempoRestanteMinutos(t.vencimiento);
+    return t.activo && min > 0 && min <= 10;
+  }).length;
+
   // Jornada (Simulated fixed based on zone or config)
   // Let's use a dynamic one if possible, otherwise fixed 19:00 to 23:00 to match design (assuming nocturno)
   const isNocturno = new Date().getHours() >= 19 || new Date().getHours() < 5;
@@ -154,9 +159,12 @@ function DashboardResumen({ perm }: { perm: Permisionario }) {
     progress = Math.min(100, Math.max(0, Math.round((currentMinutes / totalMinutes) * 100)));
   }
 
+  const horasTranscurridas = currentMinutes > 0 ? currentMinutes / 60 : 1;
+  const recaudacionPorHora = horasTranscurridas > 0 ? Math.round(totalRecaudado / horasTranscurridas) : 0;
+
   // Cobros
-  const cobrosDigitales = pagosHoy.filter(p => p.metodoPago === 'digital').length;
-  const cobrosManuales = pagosHoy.filter(p => p.metodoPago === 'efectivo').length;
+  const recaudadoEfectivo = pagosHoy.filter(p => p.metodoPago === 'efectivo').reduce((s, p) => s + p.monto, 0);
+  const recaudadoDigital = pagosHoy.filter(p => p.metodoPago === 'digital').reduce((s, p) => s + p.monto, 0);
 
   // Recaudacion por hora (mocked for visual fidelity or real)
   const barData = [
@@ -404,60 +412,74 @@ function DashboardResumen({ perm }: { perm: Permisionario }) {
         {/* Bottom Alerts & Methods Grid */}
         <div className="grid grid-cols-2 gap-3 mt-3 mb-6">
           
-          {/* Alertas rapidas */}
+          {/* Atención & Rendimiento */}
           <div className="res-card">
             <div className="flex items-center gap-1.5 text-gray-800 font-bold text-[13px] mb-3">
-              <Bell className="w-4 h-4 text-blue-600" />
-              Alertas rápidas
+              <AlertCircle className="w-4 h-4 text-blue-600" />
+              Atención & Rendimiento
             </div>
             
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <div className="flex items-center gap-2">
                   <div className="bg-orange-50 p-1.5 rounded-full"><Clock className="w-3.5 h-3.5 text-orange-500" /></div>
-                  <span className="text-[11px] text-gray-600 font-medium leading-tight">2 vehículos por vencer</span>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">Por vencer (&lt;10 min)</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+                <span className={`text-[13px] font-bold ${proximosAVencer > 0 ? 'text-orange-500' : 'text-green-500'}`}>{proximosAVencer > 0 ? proximosAVencer : '✓'}</span>
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="bg-orange-50 p-1.5 rounded-full"><AlertCircle className="w-3.5 h-3.5 text-orange-500" /></div>
-                  <span className="text-[11px] text-gray-600 font-medium leading-tight">1 pago pendiente hace 38 min</span>
+                  <div className="bg-red-50 p-1.5 rounded-full"><AlertCircle className="w-3.5 h-3.5 text-red-500" /></div>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">Vencidos en calle</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+                <span className={`text-[13px] font-bold ${ticketsVencidos.length > 0 ? 'text-red-500' : 'text-green-500'}`}>{ticketsVencidos.length > 0 ? ticketsVencidos.length : '✓'}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-orange-50 p-1.5 rounded-full"><AlertTriangle className="w-3.5 h-3.5 text-orange-500" /></div>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">Sin ticket</span>
+                </div>
+                <span className={`text-[13px] font-bold ${impagosActuales.length > 0 ? 'text-orange-500' : 'text-green-500'}`}>{impagosActuales.length > 0 ? impagosActuales.length : '✓'}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-blue-50 p-1.5 rounded-full"><TrendingUp className="w-3.5 h-3.5 text-blue-600" /></div>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">Recaudación por hora</span>
+                </div>
+                <span className="text-[13px] font-bold text-blue-600">${recaudacionPorHora.toLocaleString('es-AR')}</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="bg-blue-50 p-1.5 rounded-full"><MapPin className="w-3.5 h-3.5 text-blue-600" /></div>
-                  <span className="text-[11px] text-gray-600 font-medium leading-tight">Zona Centro con mayor actividad</span>
+                  <span className="text-[11px] text-gray-600 font-medium leading-tight">En calle ahora</span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+                <span className="text-[13px] font-bold text-blue-600">{enCalleAhora}</span>
               </div>
             </div>
           </div>
 
-          {/* Metodos de cobro */}
+          {/* Cobros del día */}
           <div className="res-card flex flex-col">
             <div className="flex items-center gap-1.5 text-gray-800 font-bold text-[13px] mb-3">
               <Banknote className="w-4 h-4 text-blue-600" />
-              Métodos de cobro
+              Cobros del día
             </div>
             
             <div className="flex flex-col gap-3 justify-center flex-1">
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-4 h-4 text-blue-600" />
-                  <span className="text-[12px] text-gray-600 font-medium">Cobros digitales</span>
+                  <span className="text-[12px] text-gray-600 font-medium">QR / Digital</span>
                 </div>
-                <span className="text-[16px] font-bold text-blue-600">{cobrosDigitales}</span>
+                <span className="text-[16px] font-bold text-blue-600">${recaudadoDigital.toLocaleString('es-AR')}</span>
               </div>
               
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-gray-100 bg-gray-50/50">
                 <div className="flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-blue-600" />
-                  <span className="text-[12px] text-gray-600 font-medium">Cobros manuales</span>
+                  <Banknote className="w-4 h-4 text-green-600" />
+                  <span className="text-[12px] text-gray-600 font-medium">Efectivo</span>
                 </div>
-                <span className="text-[16px] font-bold text-blue-600">{cobrosManuales}</span>
+                <span className="text-[16px] font-bold text-green-600">${recaudadoEfectivo.toLocaleString('es-AR')}</span>
               </div>
             </div>
           </div>

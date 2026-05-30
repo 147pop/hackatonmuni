@@ -9,7 +9,8 @@ import {
 } from 'lucide-react';
 import {
   permisionarioStore, roleStore, configStore,
-  observadoStore, ticketStore, pagoStore,
+  observadoStore, ticketStore, pagoStore, deudaStore,
+  estacionamientoStore,
 } from '@/lib/sem-store';
 import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
 import type { Permisionario, Ticket, VehiculoObservado } from '@/domain/types';
@@ -217,9 +218,10 @@ function DashboardView({
 
         {/* Tabla */}
         <VehiculosTable
-          key={refreshKey}
           tickets={tickets}
           observados={impagosObs}
+          onRefresh={refresh}
+          perm={perm}
         />
 
       </div>
@@ -288,10 +290,73 @@ type VehRow =
   | { kind: 'vencido';  ticket: Ticket & { minutosExcedidos: number } }
   | { kind: 'observado'; obs: VehiculoObservado };
 
-function VehiculosTable({ tickets, observados }: {
-  tickets: Ticket[]; observados: VehiculoObservado[];
+function VehiculosTable({ tickets, observados, onRefresh, perm }: {
+  tickets: Ticket[]; observados: VehiculoObservado[]; onRefresh: () => void; perm: Permisionario;
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'todos' | 'activos' | 'vencidos' | 'observados'>('todos');
+  const [filterType, setFilterType] = useState<'todos' | 'auto' | 'moto'>('todos');
   const now = Date.now();
+
+  const handleAction = (action: 'salida' | 'fuga', dominio: string, ticketId?: string) => {
+    const ticket = ticketId ? ticketStore.getById(ticketId) : undefined;
+    if (ticketId) ticketStore.update(ticketId, { activo: false });
+    observadoStore.remove(dominio);
+
+    const now = new Date().toISOString();
+    const existingEst = estacionamientoStore.getByDominio(dominio).find((e) => e.activo);
+
+    if (action === 'fuga') {
+      const tarifa = configStore.getTarifa();
+      deudaStore.create({
+        dominio,
+        cuadra: perm.cuadraAsignada,
+        permisionarioId: perm.id,
+        monto: tarifa.autoHora * 3,
+        fecha: now,
+        estado: 'pendiente',
+        tipo: 'incumplimiento'
+      });
+
+      if (existingEst) {
+        estacionamientoStore.update(existingEst.id, { activo: false });
+      } else {
+        estacionamientoStore.create({
+          dominio,
+          tipo: ticket?.tipo ?? 'auto',
+          zonaId: perm.zonaId,
+          cuadra: perm.cuadraAsignada,
+          permisionarioId: perm.id,
+          inicio: ticket?.inicio ?? now,
+          duracionMinutos: ticket?.duracionMinutos ?? 0,
+          metodoPago: ticket?.metodoPago ?? 'efectivo',
+          activo: false,
+          transferido: false,
+        });
+      }
+    } else {
+      if (existingEst) {
+        estacionamientoStore.update(existingEst.id, { activo: false, fin: now });
+      } else {
+        estacionamientoStore.create({
+          dominio,
+          tipo: ticket?.tipo ?? 'auto',
+          zonaId: perm.zonaId,
+          cuadra: perm.cuadraAsignada,
+          permisionarioId: perm.id,
+          inicio: ticket?.inicio ?? now,
+          duracionMinutos: ticket?.duracionMinutos ?? 60,
+          metodoPago: ticket?.metodoPago ?? 'efectivo',
+          activo: false,
+          fin: now,
+          transferido: false,
+        });
+      }
+    }
+
+    setExpandedId(null);
+    onRefresh();
+  };
 
   const rows: VehRow[] = [
     ...observados.map((obs) => ({ kind: 'observado' as const, obs })),
@@ -304,10 +369,21 @@ function VehiculosTable({ tickets, observados }: {
     }),
   ];
 
-  if (rows.length === 0) {
+  const filteredRows = rows.filter((row) => {
+    if (filterStatus === 'activos' && row.kind !== 'activo') return false;
+    if (filterStatus === 'vencidos' && row.kind !== 'vencido') return false;
+    if (filterStatus === 'observados' && row.kind !== 'observado') return false;
+    if (filterType !== 'todos') {
+      const tipo = row.kind === 'observado' ? 'auto' : row.ticket.tipo;
+      if (tipo !== filterType) return false;
+    }
+    return true;
+  });
+
+  if (filteredRows.length === 0) {
     return (
       <div className="lc-table-card">
-        <TableHeader />
+        <TableHeaderWithFilters filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterType={filterType} setFilterType={setFilterType} count={filteredRows.length} />
         <div className="lc-empty">
           <Car className="w-8 h-8" style={{ color: '#CBD5E1' }} />
           <p>No hay vehículos en tu cuadra</p>
@@ -319,7 +395,7 @@ function VehiculosTable({ tickets, observados }: {
 
   return (
     <div className="lc-table-card">
-      <TableHeader />
+      <TableHeaderWithFilters filterStatus={filterStatus} setFilterStatus={setFilterStatus} filterType={filterType} setFilterType={setFilterType} count={filteredRows.length} />
 
       {/* Column headers */}
       <div className="lc-col-heads">
@@ -331,55 +407,79 @@ function VehiculosTable({ tickets, observados }: {
       </div>
 
       {/* Rows */}
-      {rows.map((row) => {
+      {filteredRows.map((row) => {
         if (row.kind === 'observado') {
           const obs = row.obs;
           return (
-            <div key={obs.id} className="lc-row">
-              <span className="lc-dot lc-dot--orange" />
-              <div className="lc-row-info">
-                <span className="lc-row-plate">{obs.dominio}</span>
-                <span className="lc-row-model lc-row-model--orange">Sin ticket</span>
+            <div key={obs.id} className="lc-row-wrapper">
+              <div className="lc-row" onClick={() => setExpandedId(expandedId === obs.id ? null : obs.id)}>
+                <span className="lc-dot lc-dot--orange" />
+                <div className="lc-row-info">
+                  <span className="lc-row-plate">{obs.dominio}</span>
+                  <span className="lc-row-model lc-row-model--orange">Sin ticket</span>
+                </div>
+                <span className="lc-time">{fmt(obs.timestamp)}</span>
+                <span className="lc-time lc-time--muted">–</span>
+                <Link href={`${ROUTES.permisionario.registrar}?dominio=${obs.dominio}`} className="lc-pay-btn lc-pay-btn--blue" onClick={(e) => e.stopPropagation()}>
+                  <DollarSign className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <span className="lc-time">{fmt(obs.timestamp)}</span>
-              <span className="lc-time lc-time--muted">–</span>
-              <Link href={`${ROUTES.permisionario.registrar}?dominio=${obs.dominio}`} className="lc-pay-btn lc-pay-btn--blue">
-                <DollarSign className="w-3.5 h-3.5" />
-              </Link>
+              {expandedId === obs.id && (
+                <div className="lc-row-actions">
+                  <button className="lc-action-btn" onClick={() => handleAction('salida', obs.dominio)}>Marcar salida</button>
+                  <button className="lc-action-btn lc-action-btn--red" onClick={() => handleAction('fuga', obs.dominio)}>Se fue sin pagar</button>
+                </div>
+              )}
             </div>
           );
         }
         if (row.kind === 'vencido') {
           const t = row.ticket;
           return (
-            <div key={t.id} className="lc-row">
-              <span className="lc-dot lc-dot--orange" />
-              <div className="lc-row-info">
-                <span className="lc-row-plate">{t.dominio}</span>
-                <span className="lc-row-model lc-row-model--gray">{t.tipo === 'auto' ? 'Auto' : 'Moto'}</span>
+            <div key={t.id} className="lc-row-wrapper">
+              <div className="lc-row" onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}>
+                <span className="lc-dot lc-dot--orange" />
+                <div className="lc-row-info">
+                  <span className="lc-row-plate">{t.dominio}</span>
+                  <span className="lc-row-model lc-row-model--gray">{t.tipo === 'auto' ? 'Auto' : 'Moto'}</span>
+                </div>
+                <span className="lc-time">{fmt(t.inicio)}</span>
+                <span className="lc-time lc-time--red">{fmt(t.vencimiento)}</span>
+                <Link href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`} className="lc-pay-btn lc-pay-btn--orange" onClick={(e) => e.stopPropagation()}>
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                </Link>
               </div>
-              <span className="lc-time">{fmt(t.inicio)}</span>
-              <span className="lc-time lc-time--red">{fmt(t.vencimiento)}</span>
-              <Link href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`} className="lc-pay-btn lc-pay-btn--orange">
-                <AlertTriangle className="w-3.5 h-3.5" />
-              </Link>
+              {expandedId === t.id && (
+                <div className="lc-row-actions">
+                  <button className="lc-action-btn" onClick={() => handleAction('salida', t.dominio, t.id)}>Marcar salida</button>
+                  <button className="lc-action-btn lc-action-btn--red lc-action-btn--disabled" disabled title="El vehículo tiene un ticket pago">Se fue sin pagar</button>
+                </div>
+              )}
             </div>
           );
         }
         // activo
         const t = row.ticket;
         return (
-          <div key={t.id} className="lc-row">
-            <span className="lc-dot lc-dot--green" />
-            <div className="lc-row-info">
-              <span className="lc-row-plate">{t.dominio}</span>
-              <span className="lc-row-model lc-row-model--gray">{t.tipo === 'auto' ? 'Auto' : 'Moto'}</span>
+          <div key={t.id} className="lc-row-wrapper">
+            <div className="lc-row" onClick={() => setExpandedId(expandedId === t.id ? null : t.id)}>
+              <span className="lc-dot lc-dot--green" />
+              <div className="lc-row-info">
+                <span className="lc-row-plate">{t.dominio}</span>
+                <span className="lc-row-model lc-row-model--gray">{t.tipo === 'auto' ? 'Auto' : 'Moto'}</span>
+              </div>
+              <span className="lc-time">{fmt(t.inicio)}</span>
+              <span className="lc-time">{fmt(t.vencimiento)}</span>
+              <Link href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`} className="lc-pay-btn lc-pay-btn--blue" onClick={(e) => e.stopPropagation()}>
+                <DollarSign className="w-3.5 h-3.5" />
+              </Link>
             </div>
-            <span className="lc-time">{fmt(t.inicio)}</span>
-            <span className="lc-time">{fmt(t.vencimiento)}</span>
-            <Link href={`${ROUTES.permisionario.horaExtra}?dominio=${t.dominio}&ticketId=${t.id}`} className="lc-pay-btn lc-pay-btn--blue">
-              <DollarSign className="w-3.5 h-3.5" />
-            </Link>
+            {expandedId === t.id && (
+              <div className="lc-row-actions">
+                <button className="lc-action-btn" onClick={() => handleAction('salida', t.dominio, t.id)}>Marcar salida</button>
+                <button className="lc-action-btn lc-action-btn--red lc-action-btn--disabled" disabled title="El vehículo tiene un ticket pago">Se fue sin pagar</button>
+              </div>
+            )}
           </div>
         );
       })}
@@ -387,16 +487,74 @@ function VehiculosTable({ tickets, observados }: {
   );
 }
 
-function TableHeader() {
+function TableHeaderWithFilters({ filterStatus, setFilterStatus, filterType, setFilterType, count }: {
+  filterStatus: string; setFilterStatus: (s: 'todos' | 'activos' | 'vencidos' | 'observados') => void;
+  filterType: string; setFilterType: (t: 'todos' | 'auto' | 'moto') => void;
+  count: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const statusOptions = [
+    { id: 'todos' as const, label: 'Todos' },
+    { id: 'activos' as const, label: 'Activos' },
+    { id: 'vencidos' as const, label: 'Vencidos' },
+    { id: 'observados' as const, label: 'Sin ticket' },
+  ];
+  const typeOptions = [
+    { id: 'todos' as const, label: 'Todos' },
+    { id: 'auto' as const, label: 'Auto' },
+    { id: 'moto' as const, label: 'Moto' },
+  ];
+
+  const hasActiveFilter = filterStatus !== 'todos' || filterType !== 'todos';
+
   return (
     <div className="lc-table-head">
       <div className="lc-table-title">
         <Car className="w-4 h-4" style={{ color: '#2563EB' }} />
         <span>Vehículos en calle</span>
+        <span className="lc-veh-count">{count}</span>
       </div>
-      <button className="lc-filter-btn">
-        <SlidersHorizontal className="w-4 h-4" style={{ color: '#64748B' }} />
+      <button
+        className={`lc-filter-toggle ${open ? 'lc-filter-toggle--open' : ''} ${hasActiveFilter ? 'lc-filter-toggle--active' : ''}`}
+        onClick={() => setOpen(!open)}
+      >
+        <SlidersHorizontal className="w-4 h-4" />
+        {open ? <ChevronDown className="w-3 h-3 lc-filter-chevron lc-filter-chevron--up" /> : <ChevronDown className="w-3 h-3 lc-filter-chevron" />}
       </button>
+
+      {open && (
+        <div className="lc-filters-panel">
+          <div className="lc-filter-row">
+            <span className="lc-filter-label">Estado</span>
+            <div className="lc-filter-chips">
+              {statusOptions.map(({ id, label }) => (
+                <button
+                  key={id}
+                  className={`lc-filter-chip ${filterStatus === id ? 'lc-filter-chip--active' : ''}`}
+                  onClick={() => setFilterStatus(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="lc-filter-row">
+            <span className="lc-filter-label">Tipo</span>
+            <div className="lc-filter-chips">
+              {typeOptions.map(({ id, label }) => (
+                <button
+                  key={id}
+                  className={`lc-filter-chip lc-filter-chip--sm ${filterType === id ? 'lc-filter-chip--active' : ''}`}
+                  onClick={() => setFilterType(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -752,6 +910,88 @@ const STYLES = `
     align-items: center;
     padding: 4px;
   }
+  .lc-veh-count {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    color: #2563EB;
+    background: #EFF6FF;
+    border-radius: 20px;
+    padding: 2px 8px;
+    margin-left: 6px;
+  }
+  .lc-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #F1F5F9;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: #64748B;
+    transition: all 0.15s;
+    margin-left: auto;
+  }
+  .lc-filter-toggle:hover { background: #EFF6FF; border-color: #2563EB; color: #2563EB; }
+  .lc-filter-toggle--open { background: #EFF6FF; border-color: #2563EB; color: #2563EB; }
+  .lc-filter-toggle--active:not(.lc-filter-toggle--open) { background: #DBEAFE; border-color: #2563EB; color: #2563EB; }
+  .lc-filter-chevron { transition: transform 0.2s; }
+  .lc-filter-chevron--up { transform: rotate(180deg); }
+  .lc-filters-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 0 4px;
+    border-top: 1px solid #F1F5F9;
+    margin-top: 10px;
+  }
+  .lc-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lc-filter-label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 11px;
+    color: #64748B;
+    min-width: 44px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .lc-filter-chips {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+  }
+  .lc-filter-chip {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1.5px solid #E2E8F0;
+    background: #fff;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .lc-filter-chip:hover {
+    border-color: #2563EB;
+    color: #2563EB;
+  }
+  .lc-filter-chip--sm {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  .lc-filter-chip--active {
+    background: #2563EB;
+    border-color: #2563EB;
+    color: #fff;
+  }
 
   /* Column header row */
   .lc-col-heads {
@@ -775,15 +1015,52 @@ const STYLES = `
   .lc-col-heads span:nth-child(5) { text-align: center; }
 
   /* Data rows */
+  .lc-row-wrapper {
+    border-bottom: 1px solid #F8FAFC;
+  }
+  .lc-row-wrapper:last-child {
+    border-bottom: none;
+  }
   .lc-row {
     display: grid;
     grid-template-columns: 48px 1fr 50px 50px 42px;
     gap: 8px;
     align-items: center;
     padding: 10px 4px;
-    border-bottom: 1px solid #F8FAFC;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: 8px;
   }
-  .lc-row:last-child { border-bottom: none; }
+  .lc-row:hover {
+    background: #F8FAFC;
+  }
+
+  /* Actions menu */
+  .lc-row-actions {
+    display: flex;
+    gap: 8px;
+    padding: 4px 12px 12px 48px;
+  }
+  .lc-action-btn {
+    flex: 1;
+    border: none;
+    background: #F1F5F9;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .lc-action-btn:hover { background: #E2E8F0; }
+  .lc-action-btn--red { color: #DC2626; background: #FEF2F2; }
+  .lc-action-btn--red:hover { background: #FEE2E2; }
+  .lc-action-btn--disabled { opacity: 0.45; cursor: not-allowed; }
 
   /* Dot */
   .lc-dot {

@@ -19,6 +19,7 @@ import type {
   AdminRole,
 } from '@/domain/types';
 import { supabase } from '@/lib/supabase-client';
+import { storageGet, storageSet } from '@/lib/storage';
 import type { TablesUpdate } from '@/lib/database.types';
 import {
   mapZona,
@@ -81,40 +82,14 @@ export const supabaseStore: DbStore = {
   async resetToDemo() {},
 
   role: {
-    getRole: (): UserRole => {
-      if (typeof window === 'undefined') return 'conductor';
-      return (localStorage.getItem('sem_active_role') as UserRole) ?? 'conductor';
-    },
-    setRole: (r: UserRole) => {
-      if (typeof window === 'undefined') return;
-      localStorage.setItem('sem_active_role', r);
-    },
-    getAdminRole: (): AdminRole => {
-      if (typeof window === 'undefined') return 'administrador';
-      return (localStorage.getItem('sem_admin_role') as AdminRole) ?? 'administrador';
-    },
-    setAdminRole: (r: AdminRole) => {
-      if (typeof window === 'undefined') return;
-      localStorage.setItem('sem_admin_role', r);
-    },
-    getActiveConductorId: (): string | null => {
-      if (typeof window === 'undefined') return null;
-      return localStorage.getItem('sem_conductor_id') || null;
-    },
-    setActiveConductorId: (id: string | null) => {
-      if (typeof window === 'undefined') return;
-      if (id) localStorage.setItem('sem_conductor_id', id);
-      else localStorage.removeItem('sem_conductor_id');
-    },
-    getActivePermisionarioId: (): string | null => {
-      if (typeof window === 'undefined') return null;
-      return localStorage.getItem('sem_permisionario_id') || null;
-    },
-    setActivePermisionarioId: (id: string | null) => {
-      if (typeof window === 'undefined') return;
-      if (id) localStorage.setItem('sem_permisionario_id', id);
-      else localStorage.removeItem('sem_permisionario_id');
-    },
+    getRole: (): UserRole => storageGet<UserRole>('sem_active_role', 'conductor'),
+    setRole: (r: UserRole) => { storageSet('sem_active_role', r); },
+    getAdminRole: (): AdminRole => storageGet<AdminRole>('sem_admin_role', 'administrador'),
+    setAdminRole: (r: AdminRole) => { storageSet('sem_admin_role', r); },
+    getActiveConductorId: (): string | null => storageGet<string | null>('sem_conductor_id', null),
+    setActiveConductorId: (id: string | null) => { storageSet('sem_conductor_id', id); },
+    getActivePermisionarioId: (): string | null => storageGet<string | null>('sem_permisionario_id', null),
+    setActivePermisionarioId: (id: string | null) => { storageSet('sem_permisionario_id', id); },
   },
 
   config: {

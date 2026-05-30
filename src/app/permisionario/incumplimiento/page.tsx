@@ -54,6 +54,7 @@ function IncumplimientoContent() {
       <NonPaymentForm
         permisionarioId={perm.id}
         cuadra={perm.cuadraAsignada}
+        zonaId={perm.zonaId}
         initialDominio={dominioParam}
         onSuccess={() => {}}
       />

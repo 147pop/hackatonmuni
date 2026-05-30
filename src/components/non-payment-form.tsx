@@ -4,17 +4,18 @@ import { useState } from 'react';
 import { AlertTriangle, Car, Bike } from 'lucide-react';
 import { PlateInput } from './plate-input';
 import { calcularMontoDeuda } from '@/domain/calculations';
-import { configStore, deudaStore } from '@/lib/sem-store';
+import { configStore, deudaStore, estacionamientoStore, observadoStore } from '@/lib/sem-store';
 import type { VehicleType, Deuda } from '@/domain/types';
 
 interface NonPaymentFormProps {
   permisionarioId: string;
   cuadra: string;
+  zonaId?: string;
   initialDominio?: string;
   onSuccess?: (deuda: Deuda) => void;
 }
 
-export function NonPaymentForm({ permisionarioId, cuadra, initialDominio, onSuccess }: NonPaymentFormProps) {
+export function NonPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio, onSuccess }: NonPaymentFormProps) {
   const [dominio, setDominio] = useState(initialDominio ?? '');
   const [dominioValido, setDominioValido] = useState(!!initialDominio);
   const [tipo, setTipo] = useState<VehicleType>('auto');
@@ -43,7 +44,28 @@ export function NonPaymentForm({ permisionarioId, cuadra, initialDominio, onSucc
         monto,
         fecha: new Date().toISOString(),
         estado: 'pendiente',
+        tipo: 'incumplimiento',
       });
+
+      const existingEst = estacionamientoStore.getByDominio(dominio).find((e) => e.activo);
+      if (existingEst) {
+        estacionamientoStore.update(existingEst.id, { activo: false });
+      } else {
+        estacionamientoStore.create({
+          dominio,
+          tipo,
+          zonaId: zonaId ?? '',
+          cuadra,
+          permisionarioId,
+          inicio: deuda.fecha,
+          duracionMinutos: 0,
+          metodoPago: 'efectivo',
+          activo: false,
+          transferido: false,
+        });
+      }
+
+      observadoStore.remove(dominio);
 
       setDeudaCreada(deuda);
       onSuccess?.(deuda);

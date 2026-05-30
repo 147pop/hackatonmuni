@@ -7,7 +7,7 @@ import { PlateInput } from './plate-input';
 import { validarDuracion } from '@/domain/validators';
 import { calcularMonto, calcularVencimiento } from '@/domain/calculations';
 import { esHorarioPermitido } from '@/domain/rules';
-import { configStore, ticketStore, pagoStore } from '@/lib/sem-store';
+import { configStore, ticketStore, pagoStore, estacionamientoStore } from '@/lib/sem-store';
 import type { VehicleType, Ticket } from '@/domain/types';
 
 const DURACIONES = [
@@ -139,12 +139,25 @@ export function UnifiedPaymentForm({ permisionarioId, cuadra, zonaId, initialDom
         cuadra,
       });
 
+      estacionamientoStore.create({
+        dominio,
+        tipo,
+        zonaId,
+        cuadra,
+        permisionarioId,
+        inicio,
+        duracionMinutos: duracion,
+        metodoPago: metodoPago === 'qr' ? 'digital' : 'efectivo',
+        activo: true,
+        transferido: false,
+      });
+
       setTicketCreado(ticket);
       onSuccess?.(ticket);
     } finally {
       setSubmitting(false);
     }
-  }, [dominio, tipo, cuadra, permisionarioId, duracion, monto, metodoPago, onSuccess]);
+  }, [dominio, tipo, cuadra, permisionarioId, zonaId, duracion, monto, metodoPago, onSuccess]);
 
   // 2. Polling del estado del pago (solo para QR)
   useEffect(() => {

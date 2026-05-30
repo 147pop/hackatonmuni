@@ -13,8 +13,8 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
     if (!map || points.length === 0) return;
 
     import('leaflet.heat').then(() => {
-      // @ts-ignore
-      const heat = (L as any).heatLayer(points, {
+      // @ts-expect-error leaflet.heat has no types
+      const heat = (L as unknown as Record<string, unknown>).heatLayer(points, {
         radius: 35,
         blur: 28,
         maxZoom: 17,
@@ -55,10 +55,10 @@ function generateHeatPoints(): [number, number, number][] {
   const centerLng = -65.410;
   const points: [number, number, number][] = [];
 
-  for (let i = 0; i < 60; i++) points.push([centerLat + (Math.random() - 0.5) * 0.008, centerLng + (Math.random() - 0.5) * 0.008, 0.6 + Math.random() * 0.4]);
-  for (let i = 0; i < 40; i++) points.push([centerLat + 0.005 + (Math.random() - 0.5) * 0.012, centerLng - 0.004 + (Math.random() - 0.5) * 0.012, 0.3 + Math.random() * 0.4]);
-  for (let i = 0; i < 25; i++) points.push([centerLat - 0.006 + (Math.random() - 0.5) * 0.015, centerLng + 0.006 + (Math.random() - 0.5) * 0.015, 0.1 + Math.random() * 0.3]);
-  for (let i = 0; i < 30; i++) points.push([centerLat + 0.002 + (Math.random() - 0.5) * 0.003, centerLng - 0.001 + (Math.random() - 0.5) * 0.003, 0.85 + Math.random() * 0.15]);
+  for (let i = 0; i < 60; i++) { points.push([centerLat + (Math.random() - 0.5) * 0.008, centerLng + (Math.random() - 0.5) * 0.008, 0.6 + Math.random() * 0.4]); }
+  for (let i = 0; i < 40; i++) { points.push([centerLat + 0.005 + (Math.random() - 0.5) * 0.012, centerLng - 0.004 + (Math.random() - 0.5) * 0.012, 0.3 + Math.random() * 0.4]); }
+  for (let i = 0; i < 25; i++) { points.push([centerLat - 0.006 + (Math.random() - 0.5) * 0.015, centerLng + 0.006 + (Math.random() - 0.5) * 0.015, 0.1 + Math.random() * 0.3]); }
+  for (let i = 0; i < 30; i++) { points.push([centerLat + 0.002 + (Math.random() - 0.5) * 0.003, centerLng - 0.001 + (Math.random() - 0.5) * 0.003, 0.85 + Math.random() * 0.15]); }
 
   return points;
 }

@@ -6,7 +6,7 @@ import {
   User, Shield, MapPin, Car, AlertTriangle, Wallet, TrendingUp,
   CheckCircle, UserCheck, DollarSign, BarChart3, FileText,
   Settings, Map, ParkingCircle, CreditCard, Activity, ChevronRight,
-  ArrowLeft
+  ArrowLeft, Menu
 } from 'lucide-react';
 
 const Heatmap = dynamic(() => import('@/components/admin/heatmap'), {
@@ -45,95 +45,111 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="adm">
+    <div className="lc-app">
       <style>{STYLES}</style>
 
-      {/* ── Profile Card ── */}
-      <div className="adm-profile">
-        <div className="adm-profile-bg" />
-        <div className="adm-profile-content">
-          <div className="adm-avatar">
-            <Shield className="w-8 h-8" style={{ color: '#fff' }} />
+      {/* ── Header ── */}
+      <header className="lc-header">
+        <img src="/logomain.png" alt="La Cuadra" className="lc-logo" />
+      </header>
+
+      {/* ── Scroll body ── */}
+      <div className="lc-body">
+
+        {/* ── Profile Card ── */}
+        <div className="lc-greeting-card">
+          <div className="lc-avatar">
+            <Shield className="w-7 h-7" style={{ color: '#fff' }} />
           </div>
-          <h1 className="adm-name">Panel Administrador</h1>
-          <p className="adm-role">Municipalidad de Salta · Control Operativo</p>
-        </div>
-      </div>
-
-      {/* ── KPIs ── */}
-      <div className="adm-section">
-        <div className="adm-kpi-grid">
-          <KpiCard icon={<Car className="w-4 h-4" />} bg="#EFF6FF" color="#2563EB"
-            label="Vehículos" value={kpis.vehiculos.toLocaleString('es-AR')} trend="+12%" positive />
-          <KpiCard icon={<ParkingCircle className="w-4 h-4" />} bg="#F0FDF4" color="#16A34A"
-            label="Estac. hoy" value={kpis.estacionamientos.toLocaleString('es-AR')} trend="+8%" positive />
-          <KpiCard icon={<DollarSign className="w-4 h-4" />} bg="#EFF6FF" color="#2563EB"
-            label="Recaudación" value={`$${(kpis.recaudacion / 1000000).toFixed(1)}M`} trend="+15%" positive />
-          <KpiCard icon={<AlertTriangle className="w-4 h-4" />} bg="#FFF7ED" color="#EA580C"
-            label="Deudas" value={kpis.deudas.toLocaleString('es-AR')} trend="+5%" positive={false} />
-        </div>
-      </div>
-
-      {/* ── Mini Mapa ── */}
-      <div className="adm-section">
-        <div className="adm-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px 8px' }}>
-            <MapPin className="w-4 h-4" style={{ color: '#2563EB' }} />
-            <span className="adm-card-title">Disponibilidad en tiempo real</span>
+          <div className="lc-greeting-info">
+            <p className="lc-greeting-name">
+              Hola, <span className="lc-greeting-highlight">Administrador</span>
+            </p>
+            <span className="lc-ver-perfil">
+              Control Operativo
+            </span>
           </div>
-          <div style={{ height: 200, borderTop: '1px solid #F1F5F9' }}>
-            <Heatmap />
+          <button className="lc-hamburger">
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* ── KPIs ── */}
+        <div className="lc-stats-grid">
+          <div className="lc-card">
+            <div className="lc-card-head">
+              <TrendingUp className="w-4 h-4" style={{ color: '#2563EB' }} />
+              <span className="lc-card-title">Resumen Operativo</span>
+            </div>
+            <KpiCard icon={<Car className="w-4 h-4" />} bg="#EFF6FF" color="#2563EB"
+              label="Vehículos" value={kpis.vehiculos.toLocaleString('es-AR')} trend="+12%" />
+            <KpiCard icon={<ParkingCircle className="w-4 h-4" />} bg="#F0FDF4" color="#16A34A"
+              label="Estac. hoy" value={kpis.estacionamientos.toLocaleString('es-AR')} trend="+8%" />
+            <KpiCard icon={<DollarSign className="w-4 h-4" />} bg="#EFF6FF" color="#2563EB"
+              label="Recaudación" value={`$${(kpis.recaudacion / 1000000).toFixed(1)}M`} trend="+15%" />
+            <KpiCard icon={<AlertTriangle className="w-4 h-4" />} bg="#FFF7ED" color="#EA580C"
+              label="Deudas" value={kpis.deudas.toLocaleString('es-AR')} trend="+5%" negative />
+          </div>
+
+          <div className="lc-card">
+            <div className="lc-card-head">
+              <MapPin className="w-4 h-4" style={{ color: '#2563EB' }} />
+              <span className="lc-card-title">Disponibilidad en vivo</span>
+            </div>
+            <div style={{ height: 160, borderRadius: 10, overflow: 'hidden', marginTop: 4 }}>
+              <Heatmap />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── Accesos Funcionales ── */}
-      <div className="adm-section">
-        <p className="adm-section-label">Gestión Operativa</p>
-        <div className="adm-menu-grid">
-          <MenuBtn icon={<Map />} label="Mapa de calor" color="#2563EB" onClick={() => setView('mapa')} />
-          <MenuBtn icon={<Car />} label="Vehículos" color="#0891B2" onClick={() => setView('vehiculos')} />
-          <MenuBtn icon={<ParkingCircle />} label="Estacion." color="#16A34A" onClick={() => setView('estacionamientos')} />
-          <MenuBtn icon={<AlertTriangle />} label="Infracciones" color="#EA580C" onClick={() => setView('infracciones')} />
-          <MenuBtn icon={<UserCheck />} label="Previsores" color="#7C3AED" onClick={() => setView('previsores')} />
-          <MenuBtn icon={<CreditCard />} label="Cobros" color="#0D9488" onClick={() => setView('cobros')} />
-          <MenuBtn icon={<FileText />} label="Trámites" color="#2563EB" onClick={() => setView('tramites')} />
-          <MenuBtn icon={<BarChart3 />} label="Reportes" color="#D97706" onClick={() => setView('reportes')} />
-          <MenuBtn icon={<Settings />} label="Config." color="#64748B" onClick={() => setView('configuracion')} />
+        {/* ── Accesos Funcionales ── */}
+        <div className="lc-section">
+          <p className="lc-section-label">Gestión Operativa</p>
+          <div className="lc-menu-grid">
+            <MenuBtn icon={<Map />} label="Mapa de calor" color="#2563EB" onClick={() => setView('mapa')} />
+            <MenuBtn icon={<Car />} label="Vehículos" color="#0891B2" onClick={() => setView('vehiculos')} />
+            <MenuBtn icon={<ParkingCircle />} label="Estacionam." color="#16A34A" onClick={() => setView('estacionamientos')} />
+            <MenuBtn icon={<AlertTriangle />} label="Infracciones" color="#EA580C" onClick={() => setView('infracciones')} />
+            <MenuBtn icon={<UserCheck />} label="Previsores" color="#7C3AED" onClick={() => setView('previsores')} />
+            <MenuBtn icon={<CreditCard />} label="Cobros" color="#0D9488" onClick={() => setView('cobros')} />
+            <MenuBtn icon={<FileText />} label="Trámites" color="#2563EB" onClick={() => setView('tramites')} />
+            <MenuBtn icon={<BarChart3 />} label="Reportes" color="#D97706" onClick={() => setView('reportes')} />
+            <MenuBtn icon={<Settings />} label="Config." color="#64748B" onClick={() => setView('configuracion')} />
+          </div>
         </div>
-      </div>
 
-      {/* ── Actividad ── */}
-      <div className="adm-section" style={{ paddingBottom: 24 }}>
-        <p className="adm-section-label">Actividad Reciente</p>
-        <div className="adm-card">
-          {[
-            { text: 'Pago realizado', sub: 'ABC 123 – Zona Centro', time: '2 min', val: '$60', ok: true },
-            { text: 'Nuevo estacionamiento', sub: 'DEF 456 – Zona Norte', time: '5 min', val: '$50', ok: true },
-            { text: 'Infracción registrada', sub: 'GHI 789 – Exceso de tiempo', time: '8 min', val: '$1.200', ok: false },
-            { text: 'Pago realizado', sub: 'JKL 012 – Zona Sur', time: '10 min', val: '$60', ok: true },
-          ].map((a, i) => (
-            <div key={i} className="adm-act-row">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className={`adm-dot ${a.ok ? 'adm-dot--green' : 'adm-dot--red'}`} />
-                <div>
-                  <p className="adm-act-title">{a.text}</p>
-                  <p className="adm-act-sub">{a.sub}</p>
+        {/* ── Actividad ── */}
+        <div className="lc-section" style={{ paddingBottom: 24 }}>
+          <p className="lc-section-label">Actividad Reciente</p>
+          <div className="lc-card">
+            {[
+              { text: 'Pago realizado', sub: 'ABC 123 – Zona Centro', time: '2 min', val: '$60', ok: true },
+              { text: 'Nuevo estacionamiento', sub: 'DEF 456 – Zona Norte', time: '5 min', val: '$50', ok: true },
+              { text: 'Infracción registrada', sub: 'GHI 789 – Exceso de tiempo', time: '8 min', val: '$1.200', ok: false },
+              { text: 'Pago realizado', sub: 'JKL 012 – Zona Sur', time: '10 min', val: '$60', ok: true },
+            ].map((a, i) => (
+              <div key={i} className="lc-act-row">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className={`lc-dot ${a.ok ? 'lc-dot--green' : 'lc-dot--red'}`} />
+                  <div>
+                    <p className="lc-act-title">{a.text}</p>
+                    <p className="lc-act-sub">{a.sub}</p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p className="lc-act-time">Hace {a.time}</p>
+                  <p className={`lc-act-val ${!a.ok ? 'lc-act-val--red' : ''}`}>{a.val}</p>
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p className="adm-act-time">Hace {a.time}</p>
-                <p className={`adm-act-val ${!a.ok ? 'adm-act-val--red' : ''}`}>{a.val}</p>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Sub-views (contenido inventado por módulo) ──────────────────
+// ── Sub-views ──────────────────
 
 function SubView({ view, onBack }: { view: ViewMode; onBack: () => void }) {
   const titles: Record<ViewMode, string> = {
@@ -143,17 +159,22 @@ function SubView({ view, onBack }: { view: ViewMode; onBack: () => void }) {
   };
 
   return (
-    <div className="adm">
+    <div className="lc-app">
       <style>{STYLES}</style>
 
+      {/* ── Header ── */}
+      <header className="lc-header">
+        <img src="/logomain.png" alt="La Cuadra" className="lc-logo" />
+      </header>
+
       {/* ── Sub-header ── */}
-      <div className="adm-sub-header">
-        <button className="adm-back-btn" onClick={onBack}><ArrowLeft className="w-5 h-5" /></button>
-        <h2 className="adm-sub-title">{titles[view]}</h2>
+      <div className="lc-sub-header">
+        <button className="lc-back-btn" onClick={onBack}><ArrowLeft className="w-5 h-5" /></button>
+        <h2 className="lc-sub-title">{titles[view]}</h2>
         <div style={{ width: 32 }} />
       </div>
 
-      <div className="adm-sub-body">
+      <div className="lc-body">
         {view === 'mapa' && <MapaView />}
         {view === 'vehiculos' && <VehiculosView />}
         {view === 'estacionamientos' && <EstacionamientosView />}
@@ -171,14 +192,14 @@ function SubView({ view, onBack }: { view: ViewMode; onBack: () => void }) {
 function MapaView() {
   return (
     <>
-      <div className="adm-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="lc-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ height: 350 }}><Heatmap /></div>
       </div>
-      <div className="adm-legend">
-        <span><span className="adm-legend-dot" style={{ background: '#1A7A4A' }} /> Alta</span>
-        <span><span className="adm-legend-dot" style={{ background: '#F59E0B' }} /> Media</span>
-        <span><span className="adm-legend-dot" style={{ background: '#D97706' }} /> Baja</span>
-        <span><span className="adm-legend-dot" style={{ background: '#D93025' }} /> Muy baja</span>
+      <div className="lc-legend">
+        <span><span className="lc-dot lc-dot--green" /> Alta</span>
+        <span><span className="lc-dot lc-dot--orange" /> Media</span>
+        <span><span className="lc-dot" style={{background: '#D97706'}} /> Baja</span>
+        <span><span className="lc-dot lc-dot--red" /> Muy baja</span>
       </div>
     </>
   );
@@ -194,13 +215,13 @@ function VehiculosView() {
   return (
     <>
       {vehicles.map((v, i) => (
-        <div key={i} className="adm-card adm-list-item">
+        <div key={i} className="lc-card lc-list-item">
           <div>
-            <span className="adm-plate">{v.plate}</span>
-            <p className="adm-act-title" style={{ marginTop: 6 }}>{v.model}</p>
-            <p className="adm-act-sub">{v.owner}</p>
+            <span className="lc-plate">{v.plate}</span>
+            <p className="lc-act-title" style={{ marginTop: 6 }}>{v.model}</p>
+            <p className="lc-act-sub">{v.owner}</p>
           </div>
-          <span className={`adm-badge ${v.status === 'Deudor' ? 'adm-badge--red' : 'adm-badge--green'}`}>{v.status}</span>
+          <span className={`lc-badge ${v.status === 'Deudor' ? 'lc-badge--red' : 'lc-badge--green'}`}>{v.status}</span>
         </div>
       ))}
     </>
@@ -216,14 +237,14 @@ function EstacionamientosView() {
   return (
     <>
       {sessions.map((s, i) => (
-        <div key={i} className="adm-card adm-list-item">
+        <div key={i} className="lc-card lc-list-item">
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="adm-plate">{s.plate}</span>
-              <span className={`adm-badge ${s.active ? 'adm-badge--green' : 'adm-badge--gray'}`}>{s.active ? 'Activo' : 'Finalizado'}</span>
+              <span className="lc-plate">{s.plate}</span>
+              <span className={`lc-badge ${s.active ? 'lc-badge--green' : 'lc-badge--gray'}`}>{s.active ? 'Activo' : 'Finalizado'}</span>
             </div>
-            <p className="adm-act-sub" style={{ marginTop: 4 }}>{s.zone}</p>
-            <p className="adm-act-sub">{s.time} · {s.amount}</p>
+            <p className="lc-act-sub" style={{ marginTop: 4 }}>{s.zone}</p>
+            <p className="lc-act-sub">{s.time} · {s.amount}</p>
           </div>
         </div>
       ))}
@@ -240,20 +261,20 @@ function InfraccionesView() {
   return (
     <>
       {infracciones.map((inf, i) => (
-        <div key={i} className="adm-card">
+        <div key={i} className="lc-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span className="adm-plate" style={{ background: '#FEF2F2', color: '#DC2626', borderColor: '#FECACA' }}>{inf.plate}</span>
-            <span className="adm-act-time">Pendiente</span>
+            <span className="lc-plate" style={{ background: '#FEF2F2', color: '#DC2626', borderColor: '#FECACA' }}>{inf.plate}</span>
+            <span className="lc-act-time">Pendiente</span>
           </div>
-          <p className="adm-act-title">{inf.reason}</p>
-          <p className="adm-act-sub">Previsor: {inf.previsor}</p>
+          <p className="lc-act-title">{inf.reason}</p>
+          <p className="lc-act-sub">Previsor: {inf.previsor}</p>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, padding: '8px 10px', background: '#F8FAFC', borderRadius: 10 }}>
-            <span className="adm-act-sub">Importe</span>
+            <span className="lc-act-sub">Importe</span>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color: '#15181F' }}>{inf.amount}</span>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button className="adm-action-btn adm-action-btn--green">✓ Aprobar</button>
-            <button className="adm-action-btn adm-action-btn--red">✕ Anular</button>
+            <button className="lc-action-btn" style={{ background: '#F0FDF4', color: '#16A34A' }}>✓ Aprobar</button>
+            <button className="lc-action-btn lc-action-btn--red">✕ Anular</button>
           </div>
         </div>
       ))}
@@ -270,19 +291,19 @@ function PrevisoresView() {
   return (
     <>
       {previsores.map((p, i) => (
-        <div key={i} className="adm-card adm-list-item">
+        <div key={i} className="lc-card lc-list-item">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, background: '#EDE9FE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <UserCheck className="w-5 h-5" style={{ color: '#7C3AED' }} />
             </div>
             <div>
-              <p className="adm-act-title">{p.name}</p>
-              <p className="adm-act-sub">{p.legajo} · {p.zone}</p>
+              <p className="lc-act-title">{p.name}</p>
+              <p className="lc-act-sub">{p.legajo} · {p.zone}</p>
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <span className={`adm-badge ${p.status === 'Conectado' ? 'adm-badge--green' : 'adm-badge--red'}`}>{p.status}</span>
-            <p className="adm-act-sub" style={{ marginTop: 4 }}>🔋 {p.battery}</p>
+            <span className={`lc-badge ${p.status === 'Conectado' ? 'lc-badge--green' : 'lc-badge--red'}`}>{p.status}</span>
+            <p className="lc-act-sub" style={{ marginTop: 4 }}>🔋 {p.battery}</p>
           </div>
         </div>
       ))}
@@ -300,12 +321,12 @@ function CobrosView() {
   return (
     <>
       {medios.map((m, i) => (
-        <div key={i} className="adm-card adm-list-item">
+        <div key={i} className="lc-card lc-list-item">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: m.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <DollarSign className="w-4 h-4" style={{ color: m.color }} />
             </div>
-            <span className="adm-act-title">{m.label}</span>
+            <span className="lc-act-title">{m.label}</span>
           </div>
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, color: m.color }}>{m.value}</span>
         </div>
@@ -323,13 +344,13 @@ function TramitesView() {
   return (
     <>
       {tramites.map((t, i) => (
-        <div key={i} className="adm-card">
+        <div key={i} className="lc-card">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span className="adm-badge adm-badge--red" style={{ fontSize: 10 }}>{t.tipo}</span>
+            <span className="lc-badge lc-badge--red" style={{ fontSize: 10 }}>{t.tipo}</span>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, color: '#15181F' }}>{t.ticket}</span>
           </div>
-          <p className="adm-act-title">{t.title}</p>
-          <p className="adm-act-sub">DNI: {t.dni}</p>
+          <p className="lc-act-title">{t.title}</p>
+          <p className="lc-act-sub">DNI: {t.dni}</p>
         </div>
       ))}
     </>
@@ -346,14 +367,14 @@ function ReportesView() {
   return (
     <>
       {reportes.map((r, i) => (
-        <div key={i} className="adm-card adm-list-item">
+        <div key={i} className="lc-card lc-list-item">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <BarChart3 className="w-4 h-4" style={{ color: '#D97706' }} />
             </div>
             <div>
-              <p className="adm-act-title">{r.title}</p>
-              <p className="adm-act-sub">{r.desc}</p>
+              <p className="lc-act-title">{r.title}</p>
+              <p className="lc-act-sub">{r.desc}</p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4" style={{ color: '#94A3B8' }} />
@@ -372,22 +393,22 @@ function ConfigView() {
   const roles = ['Super Admin', 'Administrador Municipal', 'Supervisor', 'Auditor / Consulta'];
   return (
     <>
-      <div className="adm-card">
+      <div className="lc-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <Settings className="w-4 h-4" style={{ color: '#2563EB' }} />
-          <span className="adm-card-title">Horarios y Tarifas SEM</span>
+          <span className="lc-card-title">Horarios y Tarifas SEM</span>
         </div>
         {items.map((it, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < items.length - 1 ? '1px solid #F1F5F9' : 'none' }}>
-            <span className="adm-act-sub">{it.label}</span>
+            <span className="lc-act-sub">{it.label}</span>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, color: '#15181F' }}>{it.value}</span>
           </div>
         ))}
       </div>
-      <div className="adm-card">
+      <div className="lc-card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <Shield className="w-4 h-4" style={{ color: '#2563EB' }} />
-          <span className="adm-card-title">Usuarios y Roles (RBAC)</span>
+          <span className="lc-card-title">Usuarios y Roles (RBAC)</span>
         </div>
         {roles.map((r, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#F8FAFC', borderRadius: 10, marginBottom: 6 }}>
@@ -402,25 +423,29 @@ function ConfigView() {
 
 // ── Componentes auxiliares ─────────────────────────────────────
 
-function KpiCard({ icon, bg, color, label, value, trend, positive }: {
+function KpiCard({ icon, bg, color, label, value, trend, negative }: {
   icon: React.ReactNode; bg: string; color: string;
-  label: string; value: string; trend: string; positive: boolean;
+  label: string; value: string; trend: string; negative?: boolean;
 }) {
   return (
-    <div className="adm-kpi">
-      <div className="adm-kpi-icon" style={{ background: bg, color }}>{icon}</div>
-      <p className="adm-kpi-label">{label}</p>
-      <p className="adm-kpi-value">{value}</p>
-      <p className="adm-kpi-trend" style={{ color: positive ? '#16A34A' : '#DC2626' }}>{trend} vs ayer</p>
+    <div className="lc-stat-row" style={{ flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className="lc-stat-icon" style={{ background: bg, color }}>{icon}</div>
+        <div>
+          <div className="lc-stat-label">{label}</div>
+          <div className="lc-stat-value" style={{ color: '#15181F', fontSize: 18 }}>{value}</div>
+        </div>
+      </div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: negative ? '#DC2626' : '#16A34A', paddingLeft: 2 }}>{trend} vs ayer</div>
     </div>
   );
 }
 
 function MenuBtn({ icon, label, color, onClick }: { icon: React.ReactNode; label: string; color: string; onClick: () => void }) {
   return (
-    <button className="adm-menu-btn" onClick={onClick}>
-      <div className="adm-menu-icon" style={{ background: `${color}14`, color }}>{icon}</div>
-      <span className="adm-menu-label">{label}</span>
+    <button className="lc-menu-btn" onClick={onClick}>
+      <div className="lc-menu-icon" style={{ background: `${color}14`, color }}>{icon}</div>
+      <span className="lc-menu-label">{label}</span>
     </button>
   );
 }
@@ -428,164 +453,235 @@ function MenuBtn({ icon, label, color, onClick }: { icon: React.ReactNode; label
 // ── Estilos inyectados ─────────────────────────────────────────
 
 const STYLES = `
-  .adm {
-    font-family: var(--font-body);
-    min-height: 100%;
-  }
-
-  /* Profile */
-  .adm-profile { position: relative; padding-bottom: 20px; }
-  .adm-profile-bg {
-    height: 110px;
-    background: linear-gradient(135deg, #15326F 0%, #2563EB 100%);
-    border-radius: 0 0 28px 28px;
-  }
-  .adm-profile-content {
-    position: relative;
-    margin-top: -50px;
+  /* ── App shell ── */
+  .lc-app {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-  .adm-avatar {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #2563EB, #15326F);
-    border: 4px solid #fff;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 12px rgba(21,50,111,0.2);
-  }
-  .adm-name {
-    font-family: var(--font-display);
-    font-weight: 800; font-size: 20px;
-    color: #15181F; margin: 8px 0 2px;
-  }
-  .adm-role {
+    min-height: 100dvh;
+    background: #F5F7FA;
+    max-width: 480px;
+    margin: 0 auto;
     font-family: var(--font-body);
-    font-size: 12px; color: #686868;
   }
 
-  /* Section */
-  .adm-section { padding: 0 14px; margin-bottom: 16px; }
-  .adm-section-label {
+  /* ── Header ── */
+  .lc-header {
+    background: #2557C7;
+    padding-top: env(safe-area-inset-top, 0px);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(21,50,111,0.3);
+  }
+  .lc-logo {
+    height: 90px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  /* ── Body ── */
+  .lc-body {
+    flex: 1;
+    padding: 12px 12px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+
+  /* ── Greeting card ── */
+  .lc-greeting-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(21,50,111,0.07);
+  }
+  .lc-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #64748B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .lc-greeting-info { flex: 1; }
+  .lc-greeting-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    color: #15181F;
+    margin: 0;
+  }
+  .lc-greeting-highlight { color: #2563EB; }
+  .lc-ver-perfil {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: #686868;
+    display: block;
+    margin-top: 2px;
+  }
+  .lc-hamburger {
+    background: none;
+    border: none;
+    color: #15181F;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── Cards ── */
+  .lc-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 12px;
+    box-shadow: 0 1px 4px rgba(21,50,111,0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .lc-card-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lc-card-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 13px;
+    color: #15181F;
+  }
+
+  /* ── Stats ── */
+  .lc-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .lc-stat-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .lc-stat-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .lc-stat-label {
+    font-family: var(--font-body);
+    font-size: 11px;
+    color: #686868;
+    line-height: 1.3;
+  }
+  .lc-stat-value {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  /* ── Sections ── */
+  .lc-section { padding: 0 4px; margin-top: 6px; }
+  .lc-section-label {
     font-family: var(--font-display);
     font-weight: 700; font-size: 13px;
     color: #15181F; margin-bottom: 10px;
     padding-left: 2px;
   }
 
-  /* KPIs */
-  .adm-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .adm-kpi {
-    background: #fff; border-radius: 14px;
-    padding: 12px; box-shadow: 0 1px 4px rgba(21,50,111,0.06);
-  }
-  .adm-kpi-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
-  .adm-kpi-label { font-size: 11px; color: #686868; margin-bottom: 2px; }
-  .adm-kpi-value { font-family: var(--font-display); font-weight: 800; font-size: 18px; color: #15181F; line-height: 1.15; }
-  .adm-kpi-trend { font-size: 10px; font-weight: 600; margin-top: 2px; }
-
-  /* Card */
-  .adm-card {
-    background: #fff; border-radius: 14px;
-    padding: 14px; box-shadow: 0 1px 4px rgba(21,50,111,0.06);
-    margin-bottom: 8px;
-  }
-  .adm-card-title {
-    font-family: var(--font-display);
-    font-weight: 700; font-size: 13px; color: #15181F;
-  }
-
-  /* Menu grid */
-  .adm-menu-grid {
+  /* ── Menu Grid ── */
+  .lc-menu-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
   }
-  .adm-menu-btn {
+  .lc-menu-btn {
     background: #fff; border: none; border-radius: 14px;
     padding: 14px 8px; display: flex; flex-direction: column;
     align-items: center; gap: 8px; cursor: pointer;
     box-shadow: 0 1px 4px rgba(21,50,111,0.06);
     transition: transform 0.15s, box-shadow 0.15s;
   }
-  .adm-menu-btn:active { transform: scale(0.96); box-shadow: 0 0 0 rgba(0,0,0,0); }
-  .adm-menu-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-  .adm-menu-icon svg { width: 20px; height: 20px; }
-  .adm-menu-label { font-family: var(--font-display); font-weight: 600; font-size: 11px; color: #15181F; }
+  .lc-menu-btn:active { transform: scale(0.96); box-shadow: 0 0 0 rgba(0,0,0,0); }
+  .lc-menu-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .lc-menu-icon svg { width: 20px; height: 20px; }
+  .lc-menu-label { font-family: var(--font-display); font-weight: 600; font-size: 11px; color: #15181F; }
 
-  /* Activity */
-  .adm-act-row {
+  /* ── Activity ── */
+  .lc-act-row {
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 0; border-bottom: 1px solid #F8FAFC;
   }
-  .adm-act-row:last-child { border-bottom: none; }
-  .adm-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .adm-dot--green { background: #22C55E; }
-  .adm-dot--red { background: #EF4444; }
-  .adm-act-title { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: #15181F; margin: 0; }
-  .adm-act-sub { font-family: var(--font-body); font-size: 11px; color: #686868; margin: 0; }
-  .adm-act-time { font-family: var(--font-body); font-size: 11px; color: #94A3B8; }
-  .adm-act-val { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: #15181F; }
-  .adm-act-val--red { color: #DC2626; }
+  .lc-act-row:last-child { border-bottom: none; }
+  .lc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lc-dot--green { background: #22C55E; }
+  .lc-dot--red { background: #DC2626; }
+  .lc-dot--orange { background: #F97316; }
+  .lc-act-title { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: #15181F; margin: 0; }
+  .lc-act-sub { font-family: var(--font-body); font-size: 11px; color: #686868; margin: 0; }
+  .lc-act-time { font-family: var(--font-body); font-size: 11px; color: #94A3B8; }
+  .lc-act-val { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: #15181F; }
+  .lc-act-val--red { color: #DC2626; }
 
-  /* Sub-view */
-  .adm-sub-header {
+  /* ── Sub Views ── */
+  .lc-sub-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 14px 10px; background: #fff;
+    padding: 14px 16px 10px; background: #fff;
     border-bottom: 1px solid #F1F5F9;
-    position: sticky; top: 0; z-index: 10;
+    position: sticky; top: 90px; z-index: 10;
   }
-  .adm-back-btn {
+  .lc-back-btn {
     background: none; border: none; color: #2563EB;
     cursor: pointer; display: flex; align-items: center; padding: 4px;
   }
-  .adm-sub-title {
+  .lc-sub-title {
     font-family: var(--font-display); font-weight: 800;
     font-size: 17px; color: #15181F; margin: 0;
   }
-  .adm-sub-body { padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 8px; }
 
-  /* Badges */
-  .adm-badge {
+  .lc-badge {
     font-family: var(--font-display); font-weight: 700;
     font-size: 11px; padding: 3px 8px; border-radius: 6px;
   }
-  .adm-badge--green { background: #F0FDF4; color: #16A34A; }
-  .adm-badge--red { background: #FEF2F2; color: #DC2626; }
-  .adm-badge--gray { background: #F1F5F9; color: #64748B; }
+  .lc-badge--green { background: #F0FDF4; color: #16A34A; }
+  .lc-badge--red { background: #FEF2F2; color: #DC2626; }
+  .lc-badge--gray { background: #F1F5F9; color: #64748B; }
 
-  /* Plate */
-  .adm-plate {
+  .lc-plate {
     font-family: var(--font-display); font-weight: 800;
     font-size: 13px; background: #F1F5F9; color: #15181F;
     padding: 4px 10px; border-radius: 6px;
     border: 1px solid #E2E8F0; display: inline-block;
   }
 
-  /* List item layout */
-  .adm-list-item {
+  .lc-list-item {
     display: flex; justify-content: space-between; align-items: center;
+    flex-direction: row; /* reset direction for card */
   }
 
-  /* Action buttons */
-  .adm-action-btn {
+  .lc-action-btn {
     flex: 1; border: none; border-radius: 10px;
     padding: 10px; font-family: var(--font-display);
     font-weight: 700; font-size: 13px; cursor: pointer;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s; background: #F1F5F9; color: #475569;
   }
-  .adm-action-btn:active { opacity: 0.8; }
-  .adm-action-btn--green { background: #F0FDF4; color: #16A34A; }
-  .adm-action-btn--red { background: #FEF2F2; color: #DC2626; }
+  .lc-action-btn:active { opacity: 0.8; }
+  .lc-action-btn--red { background: #FEF2F2; color: #DC2626; }
 
-  /* Legend */
-  .adm-legend {
+  .lc-legend {
     display: flex; justify-content: center; gap: 14px;
     padding: 10px; font-size: 11px; color: #686868;
     font-family: var(--font-display); font-weight: 600;
-  }
-  .adm-legend-dot {
-    display: inline-block; width: 8px; height: 8px;
-    border-radius: 50%; margin-right: 4px; vertical-align: middle;
   }
 `;
