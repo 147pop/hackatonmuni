@@ -123,10 +123,10 @@ export default function AdminDashboard() {
           <p className="lc-section-label">Actividad Reciente</p>
           <div className="lc-card">
             {[
-              { text: 'Pago realizado', sub: 'ABC 123 – Zona Centro', time: '2 min', val: '$60', ok: true },
-              { text: 'Nuevo estacionamiento', sub: 'DEF 456 – Zona Norte', time: '5 min', val: '$50', ok: true },
-              { text: 'Infracción registrada', sub: 'GHI 789 – Exceso de tiempo', time: '8 min', val: '$1.200', ok: false },
-              { text: 'Pago realizado', sub: 'JKL 012 – Zona Sur', time: '10 min', val: '$60', ok: true },
+              { text: 'Pago realizado', sub: 'ABC 123 – Zona Centro', time: '2 min', val: '$560', ok: true },
+              { text: 'Nuevo estacionamiento', sub: 'DEF 456 – Zona Norte', time: '5 min', val: '$700', ok: true },
+              { text: 'Infracción registrada', sub: 'GHI 789 – Exceso de tiempo', time: '8 min', val: '$15.000', ok: false },
+              { text: 'Pago realizado', sub: 'JKL 012 – Zona Sur', time: '10 min', val: '$560', ok: true },
             ].map((a, i) => (
               <div key={i} className="lc-act-row">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -230,9 +230,9 @@ function VehiculosView() {
 
 function EstacionamientosView() {
   const sessions = [
-    { plate: 'AB 101 CD', zone: 'Zona Centro – Belgrano 1200', time: '10:00 – 12:00', amount: '$300', active: true },
-    { plate: 'EF 202 GH', zone: 'Zona Norte – Güemes 500', time: '09:30 – 11:30', amount: '$250', active: false },
-    { plate: 'IJ 303 KL', zone: 'Zona Sur – San Martín 800', time: '11:00 – 13:00', amount: '$400', active: true },
+    { plate: 'AB 101 CD', zone: 'Zona Centro – Belgrano 1200', time: '10:00 – 12:00', amount: '$1.400', active: true },
+    { plate: 'EF 202 GH', zone: 'Zona Norte – Güemes 500', time: '09:30 – 11:30', amount: '$1.400', active: false },
+    { plate: 'IJ 303 KL', zone: 'Zona Sur – San Martín 800', time: '11:00 – 13:00', amount: '$1.120', active: true },
   ];
   return (
     <>
@@ -386,8 +386,8 @@ function ReportesView() {
 
 function ConfigView() {
   const items = [
-    { label: 'Tarifa Base (Hora)', value: '$150.00' },
-    { label: 'Horario L-V', value: '08:00 – 20:00' },
+    { label: 'Tarifa Base (Hora)', value: '$700.00' },
+    { label: 'Horario L-V', value: '07:00 – 21:00' },
     { label: 'Feriados', value: 'Libre' },
   ];
   const roles = ['Super Admin', 'Administrador Municipal', 'Supervisor', 'Auditor / Consulta'];

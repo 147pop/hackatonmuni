@@ -205,7 +205,7 @@ function ComprobantesView() {
 
 function CuentaView() {
   const [loadingMp, setLoadingMp] = useState(false);
-  const deudaBase = 1500;
+  const deudaBase = 700;
   const descuento = deudaBase * 0.20; // 20% de descuento por pago digital según ordenanza
   const totalAPagar = deudaBase - descuento;
 
