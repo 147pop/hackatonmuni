@@ -195,15 +195,15 @@ export default function ConductorAvailabilityMap() {
   if (!mounted) return null;
 
   return (
-    <div className="w-full h-full bg-[#000] relative">
+    <div className="w-full h-full bg-[#f1f5f9] relative">
       <MapContainer
         center={[-24.80825, -65.4056]}
         zoom={18}
-        style={{ height: '100%', width: '100%', background: '#000' }}
+        style={{ height: '100%', width: '100%', background: '#f1f5f9' }}
         zoomControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap'
           maxZoom={22}
         />
@@ -211,21 +211,21 @@ export default function ConductorAvailabilityMap() {
         <CuadrasLayer />
       </MapContainer>
 
-      {/* Panel Superior como index.html */}
-      <div className="absolute top-5 left-5 z-[1000] bg-[#0f141e]/85 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl w-[280px]">
-        <h1 className="text-white font-bold text-base tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>SALTA STREET LIVE</h1>
-        <p className="text-gray-400 text-[10px] uppercase mt-1">Monitor de Av. Independencia</p>
+      {/* Panel Superior */}
+      <div className="absolute top-5 left-5 z-[1000] bg-white/90 backdrop-blur-md rounded-xl p-4 border border-slate-200 shadow-xl w-[280px]">
+        <h1 className="text-slate-900 font-bold text-base tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>SALTA STREET LIVE</h1>
+        <p className="text-slate-500 text-[10px] uppercase mt-1 font-semibold">Monitor de Av. Independencia</p>
       </div>
 
-      {/* Referencias como index.html */}
-      <div className="absolute bottom-6 left-5 z-[1000] bg-[#0f141e]/85 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl w-[280px]">
-        <h2 className="text-white text-xs font-semibold mb-3 border-b border-white/10 pb-2">REFERENCIAS DE ESTADO</h2>
+      {/* Referencias */}
+      <div className="absolute bottom-6 left-5 z-[1000] bg-white/90 backdrop-blur-md rounded-xl p-4 border border-slate-200 shadow-xl w-[280px]">
+        <h2 className="text-slate-800 text-xs font-bold mb-3 border-b border-slate-200 pb-2">REFERENCIAS DE ESTADO</h2>
         <div className="flex flex-col gap-2">
-          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.libre }}></div> Box Libre (6m) - Disponible</div>
-          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.ocupado }}></div> Box Ocupado (6m) - En uso</div>
-          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.garaje }}></div> Garaje / Prohibido Estacionar</div>
-          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.discapacitado }}></div> Reservado Discapacitados</div>
-          <div className="flex items-center text-[10px] text-gray-200"><div className="w-3 h-3 rounded mr-3 border border-white/20" style={{ background: colores.especial }}></div> Reservado Hoteles/Clínicas</div>
+          <div className="flex items-center text-[10px] text-slate-700 font-medium"><div className="w-3 h-3 rounded mr-3 shadow-sm" style={{ background: colores.libre }}></div> Box Libre (6m) - Disponible</div>
+          <div className="flex items-center text-[10px] text-slate-700 font-medium"><div className="w-3 h-3 rounded mr-3 shadow-sm" style={{ background: colores.ocupado }}></div> Box Ocupado (6m) - En uso</div>
+          <div className="flex items-center text-[10px] text-slate-700 font-medium"><div className="w-3 h-3 rounded mr-3 shadow-sm" style={{ background: colores.garaje }}></div> Garaje / Prohibido Estacionar</div>
+          <div className="flex items-center text-[10px] text-slate-700 font-medium"><div className="w-3 h-3 rounded mr-3 shadow-sm" style={{ background: colores.discapacitado }}></div> Reservado Discapacitados</div>
+          <div className="flex items-center text-[10px] text-slate-700 font-medium"><div className="w-3 h-3 rounded mr-3 shadow-sm" style={{ background: colores.especial }}></div> Reservado Hoteles/Clínicas</div>
         </div>
       </div>
     </div>
