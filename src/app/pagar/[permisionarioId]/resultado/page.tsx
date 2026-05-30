@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react';
 import { initializeIfNeeded, permisionarioStore, ticketStore, pagoStore } from '@/lib/sem-store';
 import { calcularVencimiento } from '@/domain/calculations';
+import { formatDuration } from '@/components/duration-selector';
 import type { Permisionario, Ticket } from '@/domain/types';
 
 function IsotipoSalta({ size = 24 }: { size?: number }) {
@@ -144,7 +145,7 @@ function ResultadoContent() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Duración</span>
-                  <span className="font-semibold text-gray-900">{ticket.duracionMinutos} min</span>
+                  <span className="font-semibold text-gray-900">{formatDuration(ticket.duracionMinutos)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Monto</span>

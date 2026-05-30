@@ -1,23 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, Car, Bike, CheckCircle, QrCode, Loader2, Banknote, Smartphone } from 'lucide-react';
+import { Car, Bike, CheckCircle, QrCode, Loader2, Banknote, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PlateInput } from './plate-input';
 import { validarDuracion } from '@/domain/validators';
 import { calcularMonto, calcularVencimiento } from '@/domain/calculations';
 import { esHorarioPermitido } from '@/domain/rules';
 import { configStore, ticketStore, pagoStore, estacionamientoStore } from '@/lib/sem-store';
+import { DurationSelector, formatDuration } from './duration-selector';
 import type { VehicleType, Ticket } from '@/domain/types';
-
-const DURACIONES = [
-  { label: '30 min', minutos: 30 },
-  { label: '1 hora', minutos: 60 },
-  { label: '1h 30min', minutos: 90 },
-  { label: '2 horas', minutos: 120 },
-  { label: '2h 30min', minutos: 150 },
-  { label: '3 horas', minutos: 180 },
-];
 
 interface UnifiedPaymentFormProps {
   permisionarioId: string;
@@ -228,7 +220,7 @@ export function UnifiedPaymentForm({ permisionarioId, cuadra, zonaId, initialDom
         <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2 text-base">
           <Row label="Dominio" value={ticketCreado.dominio} />
           <Row label="Vehículo" value={ticketCreado.tipo === 'auto' ? 'Auto' : 'Moto'} />
-          <Row label="Duración" value={`${ticketCreado.duracionMinutos} min`} />
+          <Row label="Duración" value={formatDuration(ticketCreado.duracionMinutos)} />
           <Row label="Método de pago" value={ticketCreado.metodoPago === 'efectivo' ? 'Efectivo' : 'QR / Digital'} />
           <Row label="Monto cobrado" value={`$${ticketCreado.monto.toLocaleString('es-AR')}`} highlight />
           <Row label="Cuadra" value={ticketCreado.cuadra} />
@@ -303,28 +295,7 @@ export function UnifiedPaymentForm({ permisionarioId, cuadra, zonaId, initialDom
           </div>
         </div>
 
-        {/* Duration */}
-        <div className="space-y-2">
-          <label className="block text-base font-semibold text-gray-700 flex items-center gap-2">
-            <Clock className="w-4 h-4" /> Duración
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {DURACIONES.map((d) => (
-              <button
-                key={d.minutos}
-                type="button"
-                onClick={() => setDuracion(d.minutos)}
-                className={`py-3 px-2 text-base font-medium rounded-xl border-2 transition-all ${
-                  duracion === d.minutos
-                    ? 'bg-municipal-600 border-municipal-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'
-                }`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <DurationSelector value={duracion} onChange={setDuracion} />
 
         {/* QR Code Section (Only if method is QR) */}
         {metodoPago === 'qr' && (

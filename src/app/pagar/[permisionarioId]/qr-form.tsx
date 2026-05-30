@@ -3,19 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PlateInput } from '@/components/plate-input';
+import { DurationSelector, formatDuration } from '@/components/duration-selector';
 import { calcularMonto, calcularVencimiento } from '@/domain/calculations';
 import { configStore, ticketStore, pagoStore } from '@/lib/sem-store';
-import { Car, Bike, Clock, ShieldCheck, Loader2, ExternalLink, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import { Car, Bike, ShieldCheck, Loader2, ExternalLink, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
 import type { VehicleType, Permisionario, Ticket } from '@/domain/types';
-
-const DURACIONES = [
-  { label: '30 min', minutos: 30 },
-  { label: '1 hora', minutos: 60 },
-  { label: '1h 30min', minutos: 90 },
-  { label: '2 horas', minutos: 120 },
-  { label: '2h 30min', minutos: 150 },
-  { label: '3 horas', minutos: 180 },
-];
 
 type Step = 'form' | 'paying' | 'success' | 'error';
 
@@ -144,7 +136,7 @@ export function QRForm({ permisionario }: { permisionario: Permisionario }) {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Duración</span>
-            <span className="font-semibold text-gray-900">{ticket.duracionMinutos} min</span>
+            <span className="font-semibold text-gray-900">{formatDuration(ticket.duracionMinutos)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Monto</span>
@@ -214,28 +206,7 @@ export function QRForm({ permisionario }: { permisionario: Permisionario }) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-base font-semibold text-gray-700">
-          <Clock className="w-4 h-4 inline mr-1.5 mb-0.5" />
-          Duración
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {DURACIONES.map((d) => (
-            <button
-              key={d.minutos}
-              type="button"
-              onClick={() => setDuracion(d.minutos)}
-              className={`py-3 px-2 text-sm font-medium rounded-xl border-2 transition-all ${
-                duracion === d.minutos
-                  ? 'bg-municipal-600 border-municipal-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DurationSelector value={duracion} onChange={setDuracion} />
 
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex justify-between items-center">
@@ -244,7 +215,7 @@ export function QRForm({ permisionario }: { permisionario: Permisionario }) {
         </div>
         <div className="flex justify-between items-center mt-1">
           <span className="text-xs text-blue-500">Cuadra: {permisionario.cuadraAsignada}</span>
-          <span className="text-xs text-blue-500">{duracion} min · {vehiculoTipo === 'auto' ? 'Auto' : 'Moto'}</span>
+          <span className="text-xs text-blue-500">{formatDuration(duracion)} · {vehiculoTipo === 'auto' ? 'Auto' : 'Moto'}</span>
         </div>
       </div>
 

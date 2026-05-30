@@ -7,6 +7,9 @@ import type {
   Feriado,
   ConfiguracionNormativa,
   Deuda,
+  Estacionamiento,
+  Ticket,
+  Pago,
 } from './types';
 
 export const SEED_TARIFA: Tarifa = {
@@ -93,7 +96,7 @@ export const SEED_PERMISIONARIOS: Permisionario[] = [
 export const SEED_CONDUCTORES: Conductor[] = [
   {
     id: 'cond-1',
-    nombre: 'Carlos',
+    nombre: 'Carlos Gómez',
     email: 'carlos@example.com',
     telefono: '387-4501234',
     dominioDefault: 'AB123CD',
@@ -101,20 +104,127 @@ export const SEED_CONDUCTORES: Conductor[] = [
   },
   {
     id: 'cond-2',
-    nombre: 'María',
+    nombre: 'María López',
     email: 'maria@example.com',
     telefono: '387-4567890',
     dominioDefault: 'XYZ789',
     createdAt: '2026-04-15T10:00:00.000Z',
+  },
+  {
+    id: 'cond-3',
+    nombre: 'Lucía Fernández',
+    email: 'lucia@example.com',
+    telefono: '387-4598765',
+    dominioDefault: 'GH456IJ',
+    createdAt: '2026-04-20T10:00:00.000Z',
   },
 ];
 
 export const SEED_VEHICULOS: Vehiculo[] = [
   { id: 'veh-1', dominio: 'AB123CD', tipo: 'auto', conductorId: 'cond-1' },
   { id: 'veh-2', dominio: 'XYZ789', tipo: 'auto', conductorId: 'cond-2' },
-  { id: 'veh-3', dominio: 'MN456OP', tipo: 'moto' },
-  { id: 'veh-4', dominio: 'PQR123', tipo: 'auto' },
-  { id: 'veh-5', dominio: 'ST789UV', tipo: 'moto' },
+  { id: 'veh-3', dominio: 'GH456IJ', tipo: 'moto', conductorId: 'cond-3' },
+];
+
+const now = new Date();
+const fifteenMinAgo = new Date(now.getTime() - 15 * 60000).toISOString();
+const thirtyFiveMinAgo = new Date(now.getTime() - 35 * 60000).toISOString();
+const fortyFiveMinLater = new Date(now.getTime() + 45 * 60000).toISOString();
+const twentyFiveMinLater = new Date(now.getTime() + 25 * 60000).toISOString();
+
+export const SEED_ESTACIONAMIENTOS: Estacionamiento[] = [
+  {
+    id: 'est-1',
+    dominio: 'AB123CD',
+    tipo: 'auto',
+    zonaId: 'zona-centro',
+    cuadra: 'Balcarce 400',
+    permisionarioId: 'perm-1',
+    inicio: fifteenMinAgo,
+    duracionMinutos: 60,
+    metodoPago: 'digital',
+    pagoId: 'pago-seed-1',
+    activo: true,
+    transferido: false,
+  },
+  {
+    id: 'est-2',
+    dominio: 'GH456IJ',
+    tipo: 'moto',
+    zonaId: 'zona-centro',
+    cuadra: 'España 400',
+    permisionarioId: 'perm-2',
+    inicio: thirtyFiveMinAgo,
+    duracionMinutos: 60,
+    metodoPago: 'digital',
+    pagoId: 'pago-seed-2',
+    activo: true,
+    transferido: false,
+  },
+];
+
+export const SEED_TICKETS: Ticket[] = [
+  {
+    id: 'ticket-1',
+    numero: 'T-1001',
+    dominio: 'AB123CD',
+    tipo: 'auto',
+    cuadra: 'Balcarce 400',
+    permisionarioId: 'perm-1',
+    inicio: fifteenMinAgo,
+    duracionMinutos: 60,
+    vencimiento: fortyFiveMinLater,
+    monto: 560,
+    metodoPago: 'digital',
+    descuentoAplicado: true,
+    activo: true,
+    conductorId: 'cond-1',
+  },
+  {
+    id: 'ticket-2',
+    numero: 'T-1002',
+    dominio: 'GH456IJ',
+    tipo: 'moto',
+    cuadra: 'España 400',
+    permisionarioId: 'perm-2',
+    inicio: thirtyFiveMinAgo,
+    duracionMinutos: 60,
+    vencimiento: twentyFiveMinLater,
+    monto: 240,
+    metodoPago: 'digital',
+    descuentoAplicado: true,
+    activo: true,
+    conductorId: 'cond-3',
+  },
+];
+
+export const SEED_PAGOS: Pago[] = [
+  {
+    id: 'pago-seed-1',
+    estacionamientoId: 'est-1',
+    ticketId: 'ticket-1',
+    dominio: 'AB123CD',
+    monto: 560,
+    metodoPago: 'digital',
+    estado: 'success',
+    permisionarioId: 'perm-1',
+    cuadra: 'Balcarce 400',
+    conductorId: 'cond-1',
+    createdAt: fifteenMinAgo,
+  },
+  {
+    id: 'pago-seed-2',
+    estacionamientoId: 'est-2',
+    ticketId: 'ticket-2',
+    dominio: 'GH456IJ',
+    monto: 240,
+    metodoPago: 'digital',
+    estado: 'success',
+    permisionarioId: 'perm-2',
+    cuadra: 'España 400',
+    conductorId: 'cond-3',
+    createdAt: thirtyFiveMinAgo,
+  },
 ];
 
 export const SEED_DEUDAS: Deuda[] = [
@@ -126,6 +236,7 @@ export const SEED_DEUDAS: Deuda[] = [
     monto: 700,
     fecha: '2026-05-20T14:30:00.000Z',
     estado: 'pendiente',
+    tipo: 'incumplimiento',
   },
   {
     id: 'deuda-2',
@@ -135,6 +246,18 @@ export const SEED_DEUDAS: Deuda[] = [
     monto: 700,
     fecha: '2026-05-22T09:15:00.000Z',
     estado: 'pendiente',
+  },
+  {
+    id: 'deuda-3',
+    dominio: 'GH456IJ',
+    cuadra: 'Pellegrini 200',
+    permisionarioId: 'perm-3',
+    monto: 900,
+    fecha: '2026-05-25T23:15:00.000Z',
+    estado: 'pendiente',
+    tipo: 'hora_extra',
+    minutosExcedidos: 60,
+    vencimientoOriginal: '2026-05-25T22:00:00.000Z',
   },
 ];
 

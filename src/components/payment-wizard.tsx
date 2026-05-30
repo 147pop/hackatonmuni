@@ -1,24 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Car, Bike, Clock, ArrowLeft, CheckCircle, MapPin } from 'lucide-react';
+import { Car, Bike, ArrowLeft, CheckCircle, MapPin } from 'lucide-react';
 import { PlateInput } from './plate-input';
 import { MercadoPagoSimulator } from './mercadopago-simulator';
 import { calcularMonto, calcularVencimiento } from '@/domain/calculations';
 import { esHorarioPermitido } from '@/domain/rules';
 import { configStore, permisionarioStore, ticketStore, pagoStore } from '@/lib/sem-store';
 import { notifyPagoEntrante } from '@/lib/mock-notifications';
+import { DurationSelector, formatDuration } from './duration-selector';
 import type { VehicleType, Ticket } from '@/domain/types';
 import Link from 'next/link';
-
-const DURACIONES = [
-  { label: '30 min', minutos: 30 },
-  { label: '1 hora', minutos: 60 },
-  { label: '1h 30min', minutos: 90 },
-  { label: '2 horas', minutos: 120 },
-  { label: '2h 30min', minutos: 150 },
-  { label: '3 horas', minutos: 180 },
-];
 
 type Step =
   | { type: 'datos' }
@@ -99,7 +91,7 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
           <Row label="Dominio" value={dominio} />
           <Row label="Cuadra" value={cuadra} />
           <Row label="Vehículo" value={vehiculoTipo === 'auto' ? 'Auto' : 'Moto'} />
-          <Row label="Duración" value={`${duracion} min`} />
+          <Row label="Duración" value={formatDuration(duracion)} />
           <Row label="Descuento digital" value="-20%" highlight />
           <div className="border-t pt-2 flex justify-between">
             <span className="font-semibold text-gray-700">Total</span>
@@ -109,7 +101,7 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
         <MercadoPagoSimulator
           monto={monto}
           dominio={dominio}
-          concepto={`Estacionamiento ${cuadra} — ${duracion} min`}
+          concepto={`Estacionamiento ${cuadra} — ${formatDuration(duracion)}`}
           onSuccess={handleSuccess}
         />
       </div>
@@ -127,7 +119,7 @@ export function PaymentWizard({ conductorId, dominioDefault, ticketLinkFn, onCom
       <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2 text-sm">
         <Row label="Dominio" value={ticket.dominio} />
         <Row label="Cuadra" value={ticket.cuadra} />
-        <Row label="Duración" value={`${ticket.duracionMinutos} min`} />
+        <Row label="Duración" value={formatDuration(ticket.duracionMinutos)} />
         <Row label="Monto pagado" value={`$${ticket.monto.toLocaleString('es-AR')}`} highlight />
       </div>
       <div className="space-y-2">
@@ -262,29 +254,7 @@ function DatosStep({ dominioDefault, onNext, error, setError }: DatosStepProps) 
         </div>
       </div>
 
-      {/* Duration */}
-      <div className="space-y-2">
-        <label className="block text-base font-semibold text-gray-700">
-          <Clock className="w-4 h-4 inline mr-1.5 mb-0.5" />
-          Duración
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {DURACIONES.map((d) => (
-            <button
-              key={d.minutos}
-              type="button"
-              onClick={() => setDuracion(d.minutos)}
-              className={`py-3 px-2 text-sm font-medium rounded-xl border-2 transition-all ${
-                duracion === d.minutos
-                  ? 'bg-municipal-600 border-municipal-600 text-white'
-                  : 'bg-white border-gray-300 text-gray-700 hover:border-municipal-400'
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DurationSelector value={duracion} onChange={setDuracion} />
 
       {/* Price */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">

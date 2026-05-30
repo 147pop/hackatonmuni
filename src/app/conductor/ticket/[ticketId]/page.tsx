@@ -7,6 +7,7 @@ import { ArrowLeft, MapPin, Clock, CreditCard, AlertTriangle, RefreshCw } from '
 import { TimeRemaining } from '@/components/time-remaining';
 import { ticketStore } from '@/lib/sem-store';
 import { calcularTiempoRestanteMinutos } from '@/domain/calculations';
+import { formatDuration } from '@/components/duration-selector';
 import { puedeTransferir } from '@/domain/rules';
 import type { Ticket } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
@@ -81,8 +82,8 @@ export default function TicketPage() {
       {/* Ticket info */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3 text-sm">
         <InfoRow icon={<MapPin className="w-4 h-4" />} label="Cuadra" value={ticket.cuadra} />
-        <InfoRow icon={<Clock className="w-4 h-4" />} label="Inicio (incluye 5m toler.)" value={new Date(ticket.inicio).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} />
-        <InfoRow icon={<Clock className="w-4 h-4" />} label="Fin estimado" value={new Date(ticket.vencimiento).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} />
+        <InfoRow icon={<Clock className="w-4 h-4" />} label="Inicio" value={new Date(ticket.inicio).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })} />
+        <InfoRow icon={<Clock className="w-4 h-4" />} label="Duración pagada" value={formatDuration(ticket.duracionMinutos)} />
         <InfoRow icon={<CreditCard className="w-4 h-4" />} label="Monto" value={`$${ticket.monto.toLocaleString('es-AR')}`} />
         {ticket.descuentoAplicado && (
           <p className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg">Descuento digital 20% aplicado</p>

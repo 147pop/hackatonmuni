@@ -34,8 +34,8 @@ export function validarTelefono(telefono: string): boolean {
 }
 
 export function validarDuracion(minutos: number): { valido: boolean; error?: string } {
-  if (!Number.isInteger(minutos) || minutos <= 0) {
-    return { valido: false, error: 'La duración debe ser mayor a 0 minutos' };
+  if (!Number.isInteger(minutos) || minutos < 60) {
+    return { valido: false, error: 'La duración mínima es 1 hora' };
   }
   if (minutos > 1440) {
     return { valido: false, error: 'La duración máxima es 24 horas' };

@@ -9,29 +9,31 @@ const client = new MercadoPagoConfig({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { amount, title } = body;
+    const { amount, title, deudaId } = body;
 
     if (!amount || !title) {
       return NextResponse.json({ error: 'Faltan parámetros requeridos (amount, title)' }, { status: 400 });
     }
 
     const preference = new Preference(client);
+    const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     const result = await preference.create({
       body: {
         items: [
           {
-            id: 'deuda_municipal',
+            id: deudaId || 'deuda_municipal',
             title: title,
             quantity: 1,
             unit_price: amount,
             currency_id: 'ARS',
           },
         ],
+        external_reference: deudaId || undefined,
         back_urls: {
-          success: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/conductor?pago=success`,
-          failure: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/conductor?pago=failure`,
-          pending: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/conductor?pago=pending`,
+          success: `${base}/conductor?pago=success`,
+          failure: `${base}/conductor?pago=failure`,
+          pending: `${base}/conductor?pago=pending`,
         },
         auto_return: 'approved',
       },

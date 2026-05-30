@@ -27,6 +27,9 @@ import {
   SEED_FERIADOS,
   SEED_CONFIG,
   SEED_DEUDAS,
+  SEED_ESTACIONAMIENTOS,
+  SEED_TICKETS,
+  SEED_PAGOS,
 } from '@/domain/seed';
 
 const K = {
@@ -80,9 +83,9 @@ export function resetToDemo(): void {
   storageSet(K.feriados, SEED_FERIADOS);
   storageSet(K.config, SEED_CONFIG);
   storageSet(K.deudas, SEED_DEUDAS);
-  storageSet(K.estacionamientos, []);
-  storageSet(K.pagos, []);
-  storageSet(K.tickets, []);
+  storageSet(K.estacionamientos, SEED_ESTACIONAMIENTOS);
+  storageSet(K.pagos, SEED_PAGOS);
+  storageSet(K.tickets, SEED_TICKETS);
   storageSet(K.emergencias, []);
   storageSet(K.liquidaciones, []);
   storageSet(K.observados, []);
