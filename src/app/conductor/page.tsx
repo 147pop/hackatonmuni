@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { 
-  Car, Map as MapIcon, FileText, User, AlertCircle, 
-  ArrowLeft, CreditCard, CheckCircle2, AlertTriangle, Shield, Clock
+  Car, Map as MapIcon, FileText,  Search, CreditCard, ChevronRight, User, CheckCircle2,
+  AlertTriangle, PlusCircle, ArrowLeft, MoreHorizontal, X, Calendar, Clock, AlertCircle
 } from 'lucide-react';
 
 const AvailabilityMap = dynamic(() => import('@/components/conductor/availability-map'), { ssr: false });
@@ -13,7 +13,7 @@ const Heatmap = dynamic(() => import('@/components/admin/heatmap'), {
   loading: () => <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9' }}>Cargando mapa...</div>
 });
 
-type ViewType = 'home' | 'vehiculos' | 'mapa' | 'comprobantes' | 'cuenta' | 'reclamos';
+type ViewType = 'home' | 'vehiculos' | 'mapa' | 'comprobantes' | 'cuenta' | 'reclamos' | 'horarios';
 
 // --- MOCK DATA ---
 const mockVehiculos = [
@@ -49,6 +49,21 @@ export default function ConductorPage() {
         </div>
       </div>
 
+      {/* ── Banner de Bloqueo por Horario ── */}
+      <div className="adm-section" style={{ marginTop: 12 }}>
+        <div className="adm-card" style={{ padding: '12px 14px', borderLeft: '4px solid #DC2626', background: '#FEF2F2', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertCircle className="w-5 h-5" style={{ color: '#DC2626' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p className="adm-act-title" style={{ color: '#DC2626' }}>Sistema Pausado: Horario Fuera de Cobro</p>
+              <p className="adm-act-sub" style={{ color: '#B91C1C' }}>El cobro y escaneo de patentes están desactivados temporalmente para prevenir cobros indebidos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Alertas (si hay ticket o deudas) ── */}
       <div className="adm-section">
         <div className="adm-card" style={{ padding: '12px 14px', borderLeft: '4px solid #16A34A', marginBottom: 12 }}>
@@ -57,9 +72,9 @@ export default function ConductorPage() {
               <Clock className="w-5 h-5" style={{ color: '#16A34A' }} />
             </div>
             <div style={{ flex: 1 }}>
-              <p className="adm-act-title">Estacionado · 45 min restantes</p>
+              <p className="adm-act-title">Estacionado · Estadía: 2h 15m</p>
               <p className="adm-act-sub">Independencia 700</p>
-              <p className="adm-act-sub" style={{ fontSize: 10, color: '#16A34A', marginTop: 2 }}>El tiempo corre tras 5 min de tolerancia</p>
+              <p className="adm-act-sub" style={{ fontSize: 10, color: '#16A34A', marginTop: 2 }}>El tiempo corre tras 5 min de tolerancia. Tarifa fraccionada aplicada.</p>
             </div>
             <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: '#16A34A' }}>45m</span>
           </div>
@@ -87,6 +102,7 @@ export default function ConductorPage() {
           <MenuBtn icon={<MapIcon />} label="Disponibilidad" color="#16A34A" onClick={() => setView('mapa')} />
           <MenuBtn icon={<FileText />} label="Comprobantes" color="#0D9488" onClick={() => setView('comprobantes')} />
           <MenuBtn icon={<User />} label="Mi Cuenta" color="#7C3AED" onClick={() => setView('cuenta')} />
+          <MenuBtn icon={<Calendar />} label="Horarios" color="#0EA5E9" onClick={() => setView('horarios')} />
           <MenuBtn icon={<AlertTriangle />} label="Reclamos" color="#EA580C" onClick={() => setView('reclamos')} />
         </div>
       </div>
@@ -113,7 +129,7 @@ export default function ConductorPage() {
 function SubView({ view, onBack }: { view: ViewType; onBack: () => void }) {
   const titles: Record<ViewType, string> = {
     home: '', mapa: 'Mapa de Disponibilidad', vehiculos: 'Mis Vehículos', 
-    comprobantes: 'Comprobantes', cuenta: 'Mi Cuenta', reclamos: 'Centro de Reclamos'
+    comprobantes: 'Comprobantes', cuenta: 'Mi Cuenta', reclamos: 'Centro de Reclamos', horarios: 'Horarios y Zonas'
   };
 
   return (
@@ -132,6 +148,7 @@ function SubView({ view, onBack }: { view: ViewType; onBack: () => void }) {
         {view === 'vehiculos' && <VehiculosView />}
         {view === 'comprobantes' && <ComprobantesView />}
         {view === 'cuenta' && <CuentaView />}
+        {view === 'horarios' && <HorariosView />}
         {view === 'reclamos' && <ReclamosView />}
       </div>
     </div>
@@ -313,6 +330,48 @@ function ReclamosView() {
       <button className="adm-action-btn" style={{ background: '#2563EB', color: '#fff', width: '100%' }}>
         Enviar Reclamo
       </button>
+    </div>
+  );
+}
+
+function HorariosView() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="adm-card">
+        <p className="adm-card-title">Turno Diurno (General)</p>
+        <p className="adm-act-sub" style={{ marginTop: 4 }}>Aplica para todas las cuadras habilitadas en zona céntrica.</p>
+        <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 12, marginTop: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Lunes a Viernes</span>
+            <span style={{ fontSize: 13, color: '#64748B' }}>07:00 a 21:00 hs</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Sábados</span>
+            <span style={{ fontSize: 13, color: '#64748B' }}>07:00 a 14:00 hs</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="adm-card">
+        <p className="adm-card-title">Turno Nocturno (Zonas Especiales)</p>
+        <p className="adm-act-sub" style={{ marginTop: 4 }}>Aplica exclusivamente en Paseo Balcarce, Plaza Alvarado, etc.</p>
+        <div style={{ background: '#F8FAFC', borderRadius: 8, padding: 12, marginTop: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Lunes a Domingo</span>
+            <span style={{ fontSize: 13, color: '#64748B' }}>22:00 a 05:00 hs</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="adm-card">
+        <p className="adm-card-title">Feriados y No Laborables</p>
+        <p className="adm-act-sub" style={{ marginTop: 4 }}>Protección automática contra cobros indebidos del sistema.</p>
+        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 8, padding: 12, marginTop: 12 }}>
+          <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 500 }}>
+            El sistema se desactiva automáticamente en horarios no permitidos o días feriados para el turno diurno.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
