@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, ZoomControl, useMap, Pane } from 'react-leaflet';
+import { MapContainer, TileLayer, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -33,6 +33,13 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
           1.0: '#FF0000',
         }
       }).addTo(map);
+
+      // Agregar clases CSS al canvas del mapa de calor para lograr el efecto de superposición
+      const canvas = heat._canvas;
+      if (canvas) {
+        canvas.style.mixBlendMode = 'multiply';
+        canvas.style.opacity = '0.85';
+      }
 
       return () => {
         map.removeLayer(heat);
@@ -73,30 +80,19 @@ export default function Heatmap() {
   if (points.length === 0) return null;
 
   return (
-    <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm border border-gray-200">
+    <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm border border-gray-200 bg-white">
       <MapContainer
         center={[-24.789, -65.410]}
         zoom={15}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
-        {/* Capa de fondo sin etiquetas (fondo gris) */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap'
         />
-        
         <ZoomControl position="bottomright" />
-        
-        {/* Capa de Calor */}
         <HeatLayer points={points} />
-        
-        {/* Capa con las etiquetas y las lineas de las calles SUPERPUESTAS */}
-        <Pane name="labelsPane" style={{ zIndex: 650, pointerEvents: 'none' }}>
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
-          />
-        </Pane>
       </MapContainer>
     </div>
   );
