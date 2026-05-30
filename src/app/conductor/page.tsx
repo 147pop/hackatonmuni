@@ -8,6 +8,10 @@ import {
 } from 'lucide-react';
 
 const AvailabilityMap = dynamic(() => import('@/components/conductor/availability-map'), { ssr: false });
+const Heatmap = dynamic(() => import('@/components/admin/heatmap'), { 
+  ssr: false,
+  loading: () => <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F1F5F9' }}>Cargando mapa...</div>
+});
 
 type ViewType = 'home' | 'vehiculos' | 'mapa' | 'comprobantes' | 'cuenta' | 'reclamos';
 
@@ -83,6 +87,19 @@ export default function ConductorPage() {
           <MenuBtn icon={<FileText />} label="Comprobantes" color="#0D9488" onClick={() => setView('comprobantes')} />
           <MenuBtn icon={<User />} label="Mi Cuenta" color="#7C3AED" onClick={() => setView('cuenta')} />
           <MenuBtn icon={<AlertTriangle />} label="Reclamos" color="#EA580C" onClick={() => setView('reclamos')} />
+        </div>
+      </div>
+
+      {/* ── Mini Mapa de Calor ── */}
+      <div className="adm-section" style={{ paddingBottom: 24 }}>
+        <div className="adm-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px 8px' }}>
+            <MapIcon className="w-4 h-4" style={{ color: '#2563EB' }} />
+            <span className="adm-card-title">Mapa de Calor (En Vivo)</span>
+          </div>
+          <div style={{ height: 200, borderTop: '1px solid #F1F5F9' }}>
+            <Heatmap />
+          </div>
         </div>
       </div>
 
