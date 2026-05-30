@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Clock, Car, Bike, CheckCircle, QrCode, Loader2 } from 'lucide-react';
+import { Clock, Car, Bike, CheckCircle, QrCode, Loader2, Banknote, Smartphone } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { PlateInput } from './plate-input';
 import { validarDuracion } from '@/domain/validators';
@@ -19,15 +19,17 @@ const DURACIONES = [
   { label: '3 horas', minutos: 180 },
 ];
 
-interface QRPaymentFormProps {
+interface UnifiedPaymentFormProps {
   permisionarioId: string;
   cuadra: string;
   zonaId: string;
   initialDominio?: string;
+  initialMethod?: 'efectivo' | 'qr';
   onSuccess?: (ticket: Ticket) => void;
 }
 
-export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio, onSuccess }: QRPaymentFormProps) {
+export function UnifiedPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio, initialMethod = 'efectivo', onSuccess }: UnifiedPaymentFormProps) {
+  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'qr'>(initialMethod);
   const [dominio, setDominio] = useState(initialDominio ?? '');
   const [dominioValido, setDominioValido] = useState(!!initialDominio);
   const [tipo, setTipo] = useState<VehicleType>('auto');
@@ -43,12 +45,19 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
   const [externalRef, setExternalRef] = useState<string | null>(null);
 
   const tarifa = configStore.getTarifa();
-  const monto = calcularMonto({ tipo, duracionMinutos: duracion, metodoPago: 'digital', tarifa });
+  const monto = calcularMonto({ tipo, duracionMinutos: duracion, metodoPago: metodoPago === 'qr' ? 'digital' : 'efectivo', tarifa });
 
-  // 1. Crear preferencia cuando los datos sean válidos y cambien
+  // 1. Crear preferencia cuando los datos sean válidos, cambien, y el método sea QR
   useEffect(() => {
     let active = true;
     
+    if (metodoPago !== 'qr') {
+      setQrUrl('');
+      setQrError('');
+      setExternalRef(null);
+      return;
+    }
+
     if (!dominioValido || monto <= 0) {
       setQrUrl('');
       setQrError('');
@@ -83,7 +92,6 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
         }
 
         if (active) {
-          // Checkout Pro: encoda init_point como QR para que el conductor lo escanee con MP
           setQrUrl(data.init_point);
           setExternalRef(data.externalReference);
         }
@@ -98,7 +106,7 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
     crearPreferencia();
 
     return () => { active = false; };
-  }, [monto, dominio, dominioValido, cuadra, duracion, permisionarioId, tipo]);
+  }, [metodoPago, monto, dominio, dominioValido, cuadra, duracion, permisionarioId, tipo]);
 
   const registrarTicketExitoso = useCallback(() => {
     setSubmitting(true);
@@ -116,7 +124,7 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
         duracionMinutos: duracion,
         vencimiento,
         monto,
-        metodoPago: 'digital',
+        metodoPago: metodoPago === 'qr' ? 'digital' : 'efectivo',
         descuentoAplicado: false,
         activo: true,
       });
@@ -125,7 +133,7 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
         ticketId: ticket.id,
         dominio,
         monto,
-        metodoPago: 'digital',
+        metodoPago: metodoPago === 'qr' ? 'digital' : 'efectivo',
         estado: 'success',
         permisionarioId,
         cuadra,
@@ -136,13 +144,13 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
     } finally {
       setSubmitting(false);
     }
-  }, [dominio, tipo, cuadra, permisionarioId, duracion, monto, onSuccess]);
+  }, [dominio, tipo, cuadra, permisionarioId, duracion, monto, metodoPago, onSuccess]);
 
-  // 2. Polling del estado del pago
+  // 2. Polling del estado del pago (solo para QR)
   useEffect(() => {
     let active = true;
 
-    if (!externalRef) return;
+    if (metodoPago !== 'qr' || !externalRef) return;
 
     async function checkStatus() {
       try {
@@ -152,7 +160,7 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
         
         if (active && data.status === 'approved') {
           registrarTicketExitoso();
-          setExternalRef(null); // Stop polling
+          setExternalRef(null);
         }
       } catch (err) {
         console.error('[Polling] Error:', err);
@@ -165,13 +173,13 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
       active = false;
       clearInterval(intervalId);
     };
-  }, [externalRef, registrarTicketExitoso]);
+  }, [externalRef, metodoPago, registrarTicketExitoso]);
 
-
-
-  function handleSubmit(e: React.FormEvent) {
+  function handleEfectivoSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (metodoPago !== 'efectivo') return;
 
     if (!dominioValido) {
       setError('Ingresá un dominio válido.');
@@ -208,6 +216,7 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
           <Row label="Dominio" value={ticketCreado.dominio} />
           <Row label="Vehículo" value={ticketCreado.tipo === 'auto' ? 'Auto' : 'Moto'} />
           <Row label="Duración" value={`${ticketCreado.duracionMinutos} min`} />
+          <Row label="Método de pago" value={ticketCreado.metodoPago === 'efectivo' ? 'Efectivo' : 'QR / Digital'} />
           <Row label="Monto cobrado" value={`$${ticketCreado.monto.toLocaleString('es-AR')}`} highlight />
           <Row label="Cuadra" value={ticketCreado.cuadra} />
         </div>
@@ -223,7 +232,35 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
 
   return (
     <div className="space-y-6">
-      <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+      {/* Selector de Método de Pago */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <button
+          type="button"
+          onClick={() => setMetodoPago('efectivo')}
+          className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+            metodoPago === 'efectivo'
+              ? 'border-municipal-600 bg-municipal-50 text-municipal-700'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-municipal-300'
+          }`}
+        >
+          <Banknote className="w-6 h-6 mb-2" />
+          <span className="font-semibold">Efectivo</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMetodoPago('qr')}
+          className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+            metodoPago === 'qr'
+              ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-300'
+          }`}
+        >
+          <Smartphone className="w-6 h-6 mb-2" />
+          <span className="font-semibold">QR / MercadoPago</span>
+        </button>
+      </div>
+
+      <form onSubmit={metodoPago === 'efectivo' ? handleEfectivoSubmit : (e) => e.preventDefault()} className="space-y-6">
         <PlateInput
           value={dominio}
           onChange={setDominio}
@@ -275,50 +312,68 @@ export function QRPaymentForm({ permisionarioId, cuadra, zonaId, initialDominio,
             ))}
           </div>
         </div>
+
+        {/* QR Code Section (Only if method is QR) */}
+        {metodoPago === 'qr' && (
+          <div className="bg-white border-2 border-indigo-100 rounded-2xl p-6 flex flex-col items-center space-y-4 shadow-sm mt-6">
+            <div className="flex items-center gap-2 text-indigo-700 font-semibold mb-2">
+              <QrCode className="w-6 h-6" />
+              <span>Escaneá con MercadoPago</span>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-center" style={{ minHeight: 200, minWidth: 200 }}>
+              {loadingQr || !dominioValido || qrError ? (
+                <div className="flex flex-col items-center justify-center space-y-2 text-gray-400">
+                  {!dominioValido ? (
+                    <p className="text-sm">Ingresá la patente</p>
+                  ) : qrError ? (
+                    <p className="text-sm text-red-500 text-center px-2">{qrError}</p>
+                  ) : (
+                    <>
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                      <p className="text-sm">Generando QR...</p>
+                    </>
+                  )}
+                </div>
+              ) : qrUrl ? (
+                <QRCodeSVG value={qrUrl} size={200} />
+              ) : null}
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-500">Monto a cobrar</p>
+              <p className="text-3xl font-bold text-gray-900">${monto.toLocaleString('es-AR')}</p>
+            </div>
+            <button
+              type="button"
+              disabled={true}
+              className="btn-xl bg-indigo-50 border border-indigo-200 text-indigo-400 w-full transition-colors flex items-center justify-center gap-2 cursor-not-allowed mt-4"
+            >
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Esperando confirmación de pago...
+            </button>
+          </div>
+        )}
+
+        {/* Efectivo Section */}
+        {metodoPago === 'efectivo' && (
+          <div className="mt-6">
+            <div className="bg-gray-50 rounded-xl p-4 flex justify-between items-center mb-6">
+              <span className="text-base text-gray-600">Monto a cobrar (efectivo)</span>
+              <span className="text-2xl font-bold text-gray-900">${monto.toLocaleString('es-AR')}</span>
+            </div>
+            <button
+              type="submit"
+              disabled={submitting || !dominioValido}
+              className="btn-xl bg-municipal-600 hover:bg-municipal-700 disabled:bg-gray-300 text-white w-full transition-colors"
+            >
+              {submitting ? 'Registrando…' : 'Registrar pago efectivo'}
+            </button>
+          </div>
+        )}
+        
+        {error && (
+          <p className="text-base text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl">{error}</p>
+        )}
       </form>
-
-      {/* QR Code Section */}
-      <div className="bg-white border-2 border-indigo-100 rounded-2xl p-6 flex flex-col items-center space-y-4 shadow-sm">
-        <div className="flex items-center gap-2 text-indigo-700 font-semibold mb-2">
-          <QrCode className="w-6 h-6" />
-          <span>Escaneá con MercadoPago</span>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-center" style={{ minHeight: 200, minWidth: 200 }}>
-          {loadingQr || !dominioValido || qrError ? (
-             <div className="flex flex-col items-center justify-center space-y-2 text-gray-400">
-               {!dominioValido ? (
-                 <p className="text-sm">Ingresá la patente</p>
-               ) : qrError ? (
-                 <p className="text-sm text-red-500 text-center px-2">{qrError}</p>
-               ) : (
-                 <>
-                  <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                  <p className="text-sm">Generando QR...</p>
-                 </>
-               )}
-             </div>
-          ) : qrUrl ? (
-            <QRCodeSVG value={qrUrl} size={200} />
-          ) : null}
-        </div>
-        <div className="text-center">
-          <p className="text-sm text-gray-500">Monto a cobrar</p>
-          <p className="text-3xl font-bold text-gray-900">${monto.toLocaleString('es-AR')}</p>
-        </div>
-      </div>
-
-      {error && (
-        <p className="text-base text-red-600 bg-red-50 border border-red-200 px-4 py-3 rounded-xl">{error}</p>
-      )}
-
-      <button
-        type="button"
-        disabled={true}
-        className="btn-xl bg-indigo-50 border border-indigo-200 text-indigo-400 w-full transition-colors flex items-center justify-center gap-2 cursor-not-allowed"
-      >
-        <Loader2 className="w-5 h-5 animate-spin" />
-        Esperando confirmación de pago...
-      </button>
     </div>
   );
 }

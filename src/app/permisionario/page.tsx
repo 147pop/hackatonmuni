@@ -36,7 +36,7 @@ function getTurno(zonaId: string): string {
 import React from 'react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: unknown}> {
-  constructor(props: unknown) {
+  constructor(props: {children: React.ReactNode}) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -228,7 +228,7 @@ function DashboardView({
       <nav className="lc-bottom-nav">
         {([
           { id: 'inicio',    label: 'Inicio',    icon: LayoutGrid,     href: ROUTES.permisionario.root },
-          { id: 'vehiculos', label: 'Vehículos', icon: Car,            href: ROUTES.permisionario.registrar },
+          { id: 'vehiculos', label: 'Vehículos', icon: Car,            href: ROUTES.permisionario.vehiculos },
           { id: 'cobros',    label: 'Cobros',    icon: DollarSign,     href: ROUTES.permisionario.cobrarQr },
           { id: 'reportes',  label: 'Reportes',  icon: BarChart3,      href: ROUTES.permisionario.actividad },
           { id: 'mas',       label: 'Más',       icon: MoreHorizontal, href: ROUTES.permisionario.credencial },

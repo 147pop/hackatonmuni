@@ -17,11 +17,12 @@ export const ROUTES = {
   permisionario: {
     root: '/permisionario',
     registrar: '/permisionario/registrar',
-    cobrarQr: '/permisionario/cobrar-qr',
+    cobrarQr: '/permisionario/registrar?method=qr',
     incumplimiento: '/permisionario/incumplimiento',
     horaExtra: '/permisionario/hora-extra',
     actividad: '/permisionario/actividad',
     credencial: '/permisionario/credencial',
+    vehiculos: '/permisionario/vehiculos',
   },
   admin: {
     root: '/admin',

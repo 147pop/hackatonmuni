@@ -19,7 +19,6 @@ import type {
   AdminRole,
 } from '@/domain/types';
 import { supabase } from '@/lib/supabase-client';
-import type { Database } from '@/lib/database.types';
 import type { TablesUpdate } from '@/lib/database.types';
 import {
   mapZona,
@@ -46,6 +45,7 @@ import {
   toDbEmergencia,
   toDbLiquidacion,
 } from './mappers';
+import type { ConductorRow, UserRow } from './mappers';
 
 let ticketCounter = 1000;
 function nextTicketNumber(): string {
@@ -241,12 +241,12 @@ export const supabaseStore: DbStore = {
     getAll: async (): Promise<Conductor[]> => {
       const { data: rows } = await supabase.from('conductores').select('*, users(*)');
       if (!rows) return [];
-      return rows.map((r: Record<string, unknown>) => mapConductor(r as Record<string, unknown>, r.users as Record<string, unknown> | null));
+      return rows.map((r) => mapConductor(r as ConductorRow, (r as Record<string, unknown>).users as UserRow | null));
     },
     getById: async (id: string): Promise<Conductor | undefined> => {
       const { data: row } = await supabase.from('conductores').select('*, users(*)').eq('id', id).single();
       if (!row) return undefined;
-      return mapConductor(row as Record<string, unknown>, (row as Record<string, unknown>).users as Record<string, unknown> | null);
+      return mapConductor(row as ConductorRow, (row as Record<string, unknown>).users as UserRow | null);
     },
     create: async (data: Omit<Conductor, 'id' | 'createdAt'>): Promise<Conductor> => {
       const { data: userRow } = await supabase.from('users').insert({
@@ -270,7 +270,7 @@ export const supabaseStore: DbStore = {
       }).eq('id', id).select('*, users(*)').single();
       if (!row) return undefined;
       await addAudit('conductor_update', 'conductor', id, {});
-      return mapConductor(row as Record<string, unknown>, (row as Record<string, unknown>).users as Record<string, unknown> | null);
+      return mapConductor(row as ConductorRow, (row as Record<string, unknown>).users as UserRow | null);
     },
   },
 
@@ -489,6 +489,17 @@ export const supabaseStore: DbStore = {
     getActivos: async (): Promise<Estacionamiento[]> => {
       const cache = await loadCuadrasCache(supabase);
       const { data } = await supabase.from('estacionamientos').select('*').eq('estado', 'activo');
+      return data ? data.map((r) => mapEstacionamiento(r, cache)) : [];
+    },
+    getByPermisionarioCuadra: async (permisionarioId: string, cuadra: string): Promise<Estacionamiento[]> => {
+      const cache = await loadCuadrasCache(supabase);
+      const cuadraId = [...cache.entries()].find(([, v]) => v === cuadra)?.[0] ?? cuadra;
+      const { data } = await supabase.from('estacionamientos').select('*').eq('permisionario_id', permisionarioId).eq('cuadra_id', cuadraId).order('inicio', { ascending: false }).limit(20);
+      return data ? data.map((r) => mapEstacionamiento(r, cache)) : [];
+    },
+    getByDominio: async (dominio: string): Promise<Estacionamiento[]> => {
+      const cache = await loadCuadrasCache(supabase);
+      const { data } = await supabase.from('estacionamientos').select('*').eq('dominio', dominio.toUpperCase()).order('inicio', { ascending: false });
       return data ? data.map((r) => mapEstacionamiento(r, cache)) : [];
     },
     create: async (data: Omit<Estacionamiento, 'id'>): Promise<Estacionamiento> => {

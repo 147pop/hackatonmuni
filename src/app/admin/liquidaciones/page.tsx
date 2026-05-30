@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, DollarSign, CheckCircle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
-import { permisionarioStore, pagoStore, liquidacionStore } from '@/lib/sem-store';
+import { db } from '@/lib/db';
 import { calcularLiquidacion } from '@/domain/calculations';
 import { useAdminRole, canEdit, ReadOnlyBanner } from '@/components/admin/role-guard';
 import type { Permisionario, Pago, Liquidacion } from '@/domain/types';
@@ -34,38 +34,56 @@ export default function LiquidacionesPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState<string | null>(null);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => { load(); }, [periodo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function load() {
-    const perms = permisionarioStore.getAll();
-    const allPagos = pagoStore.getAll().filter((p) => p.estado === 'success');
+  async function load() {
+    setLoading(true);
+    try {
+      const [perms, allPagos] = await Promise.all([
+        db.permisionarios.getAll(),
+        db.pagos.getAll(),
+      ]);
+      const successPagos = allPagos.filter((p) => p.estado === 'success');
 
-    const data: PermResumen[] = perms.map((perm) => {
-      const pagos = allPagos.filter((p) => {
-        if (p.permisionarioId !== perm.id) return false;
-        return p.createdAt.startsWith(periodo);
-      });
-      const total = pagos.reduce((s, p) => s + p.monto, 0);
-      const { cuotaMunicipal, montoLiquidado } = calcularLiquidacion(total);
-      const liquidaciones = liquidacionStore.getByPermisionario(perm.id).filter((l) => l.periodo === periodo);
-      return { perm, pagos, total, cuotaMunicipal, montoLiquidado, liquidaciones };
-    });
+      const data: PermResumen[] = await Promise.all(perms.map(async (perm) => {
+        const pagos = successPagos.filter((p) => {
+          if (p.permisionarioId !== perm.id) return false;
+          return p.createdAt.startsWith(periodo);
+        });
+        const total = pagos.reduce((s, p) => s + p.monto, 0);
+        const { cuotaMunicipal, montoLiquidado } = calcularLiquidacion(total);
+        const liquidaciones = (await db.liquidaciones.getByPermisionario(perm.id)).filter((l) => l.periodo === periodo);
+        return { perm, pagos, total, cuotaMunicipal, montoLiquidado, liquidaciones };
+      }));
 
-    setResumen(data);
+      setResumen(data);
+    } catch (err) {
+      console.error('Error loading liquidaciones:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleTransferir(permId: string, total: number, cuotaMunicipal: number, montoLiquidado: number) {
+  async function handleTransferir(permId: string, total: number, cuotaMunicipal: number, montoLiquidado: number) {
     setProcessing(permId);
-    const liq = liquidacionStore.create({
-      permisionarioId: permId,
-      periodo,
-      totalRecaudado: total,
-      cuotaMunicipal,
-      montoLiquidado,
-      estado: 'pendiente',
-    });
-    liquidacionStore.transferir(liq.id);
-    setTimeout(() => { load(); setProcessing(null); }, 600);
+    try {
+      const liq = await db.liquidaciones.create({
+        permisionarioId: permId,
+        periodo,
+        totalRecaudado: total,
+        cuotaMunicipal,
+        montoLiquidado,
+        estado: 'pendiente',
+      });
+      await db.liquidaciones.transferir(liq.id);
+      await load();
+    } catch (err) {
+      console.error('Error transferring:', err);
+    } finally {
+      setProcessing(null);
+    }
   }
 
   function toggleExpand(id: string) {
@@ -93,6 +111,8 @@ export default function LiquidacionesPage() {
       </div>
 
       {!editable && <ReadOnlyBanner />}
+
+      {loading && <p className="text-center text-gray-500 text-sm py-8">Cargando liquidaciones...</p>}
 
       {/* Summary totals */}
       {resumen.length > 0 && (

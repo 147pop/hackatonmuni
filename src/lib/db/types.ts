@@ -111,6 +111,8 @@ export interface DbStore {
   estacionamientos: {
     getAll(): Promise<Estacionamiento[]>;
     getActivos(): Promise<Estacionamiento[]>;
+    getByPermisionarioCuadra(permisionarioId: string, cuadra: string): Promise<Estacionamiento[]>;
+    getByDominio(dominio: string): Promise<Estacionamiento[]>;
     create(data: Omit<Estacionamiento, 'id'>): Promise<Estacionamiento>;
     update(id: string, data: Partial<Estacionamiento>): Promise<Estacionamiento | undefined>;
   };

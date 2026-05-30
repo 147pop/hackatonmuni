@@ -129,6 +129,8 @@ export const localStorageStore: DbStore = {
   estacionamientos: {
     getAll: async () => estacionamientoStore.getAll(),
     getActivos: async () => estacionamientoStore.getActivos(),
+    getByPermisionarioCuadra: async (pId, c) => estacionamientoStore.getByPermisionarioCuadra(pId, c),
+    getByDominio: async (d) => estacionamientoStore.getByDominio(d),
     create: async (data) => estacionamientoStore.create(data),
     update: async (id, data) => estacionamientoStore.update(id, data),
   },

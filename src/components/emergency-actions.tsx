@@ -20,6 +20,7 @@ export function EmergencyActions({ permisionarioId, cuadra }: EmergencyActionsPr
       tipo: 'panico',
       origenRol: 'permisionario',
       origenId: permisionarioId,
+      permisionarioId,
       cuadra,
       coordenadas: getCoordsForCuadra(cuadra),
     });
@@ -32,6 +33,7 @@ export function EmergencyActions({ permisionarioId, cuadra }: EmergencyActionsPr
       tipo: 'disputa',
       origenRol: 'permisionario',
       origenId: permisionarioId,
+      permisionarioId,
       cuadra,
       coordenadas: getCoordsForCuadra(cuadra),
     });

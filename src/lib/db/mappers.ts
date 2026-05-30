@@ -14,8 +14,6 @@ import type {
   Liquidacion,
   AuditEvent,
   VehiculoObservado,
-  UserRole,
-  AdminRole,
   VehicleType,
   PaymentMethod,
   PaymentStatus,
@@ -36,8 +34,8 @@ type FeriadoRow = TableRow<'feriados'>;
 type ConfigRow = TableRow<'configuracion_normativa'>;
 type PermisionarioRow = TableRow<'permisionarios'>;
 type HorarioRow = TableRow<'horarios_permisionario'>;
-type UserRow = TableRow<'users'>;
-type ConductorRow = TableRow<'conductores'>;
+export type UserRow = TableRow<'users'>;
+export type ConductorRow = TableRow<'conductores'>;
 type VehiculoRow = TableRow<'vehiculos'>;
 type EstacionamientoRow = TableRow<'estacionamientos'>;
 type PagoRow = TableRow<'pagos'>;
@@ -93,7 +91,7 @@ export function mapConfig(row: ConfigRow): ConfiguracionNormativa {
 
 export async function mapPermisionario(
   row: PermisionarioRow,
-  supabase: import('@supabase/supabase-js').SupabaseClient<import('./database.types').Database>,
+  supabase: import('@supabase/supabase-js').SupabaseClient<Database>,
   cuadrasCache?: Map<string, string>,
 ): Promise<Permisionario> {
   let cuadraNombre: string;
@@ -129,7 +127,7 @@ export async function mapPermisionario(
   };
 }
 
-export function mapConductor(row: ConductorRow, user?: UserRow): Conductor {
+export function mapConductor(row: ConductorRow, user: UserRow | null | undefined): Conductor {
   return {
     id: row.id,
     nombre: user?.nombre ?? '',
@@ -262,7 +260,7 @@ export function mapAuditEvent(row: AuditRow): AuditEvent {
     entidadId: row.entidad_id,
     usuarioRol: row.usuario_rol,
     usuarioId: row.usuario_id,
-    datos: (row.dato ?? row.datos ?? {}) as Record<string, unknown>,
+    datos: (row.datos ?? {}) as Record<string, unknown>,
     timestamp: row.timestamp,
   };
 }
@@ -319,6 +317,7 @@ export function toDbEstacionamiento(data: Omit<Estacionamiento, 'id'>): Estacion
 
 export function toDbTicket(data: Omit<Ticket, 'id' | 'numero'>): TicketInsert {
   return {
+    numero: '',
     dominio: data.dominio,
     tipo: data.tipo,
     cuadra_id: data.cuadra,
@@ -392,22 +391,10 @@ export function toDbLiquidacion(data: Omit<Liquidacion, 'id' | 'createdAt'>): Li
 
 // Helper to load cuadra names in batch
 export async function loadCuadrasCache(
-  supabase: import('@supabase/supabase-js').SupabaseClient<import('./database.types').Database>,
+  supabase: import('@supabase/supabase-js').SupabaseClient<Database>,
 ): Promise<Map<string, string>> {
   const { data } = await supabase.from('cuadras').select('id, nombre');
   const map = new Map<string, string>();
   if (data) for (const c of data) map.set(c.id, c.nombre);
   return map;
 }
-
-// Fix AuditRow datos field
-type AuditRowFixed = {
-  id: string;
-  tipo: string;
-  entidad: string;
-  entidad_id: string;
-  usuario_id: string;
-  usuario_rol: string;
-  datos: Record<string, unknown>;
-  timestamp: string;
-};

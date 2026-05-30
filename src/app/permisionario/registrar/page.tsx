@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { permisionarioStore, roleStore } from '@/lib/sem-store';
-import { CashPaymentForm } from '@/components/cash-payment-form';
+import { UnifiedPaymentForm } from '@/components/unified-payment-form';
 import { notifyPagoEntrante } from '@/lib/mock-notifications';
 import type { Permisionario, Ticket } from '@/domain/types';
 import { ROUTES } from '@/lib/routes';
@@ -21,6 +21,7 @@ export default function RegistrarPage() {
 function RegistrarContent() {
   const searchParams = useSearchParams();
   const dominioParam = searchParams.get('dominio') ?? '';
+  const methodParam = searchParams.get('method') === 'qr' ? 'qr' : 'efectivo';
 
   const [perm, setPerm] = useState<Permisionario | null>(null);
 
@@ -51,16 +52,17 @@ function RegistrarContent() {
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Registrar pago efectivo</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Registrar Cobro</h1>
           <p className="text-base text-gray-500">{perm.cuadraAsignada}</p>
         </div>
       </div>
 
-      <CashPaymentForm
+      <UnifiedPaymentForm
         permisionarioId={perm.id}
         cuadra={perm.cuadraAsignada}
         zonaId={perm.zonaId}
         initialDominio={dominioParam}
+        initialMethod={methodParam}
         onSuccess={handleSuccess}
       />
     </div>

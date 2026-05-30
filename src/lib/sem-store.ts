@@ -375,6 +375,15 @@ export const auditStore = {
 export const estacionamientoStore = {
   getAll: (): Estacionamiento[] => storageGet<Estacionamiento[]>(K.estacionamientos, []),
   getActivos: (): Estacionamiento[] => estacionamientoStore.getAll().filter((e) => e.activo),
+  getByPermisionarioCuadra: (permisionarioId: string, cuadra: string): Estacionamiento[] =>
+    estacionamientoStore.getAll()
+      .filter((e) => e.permisionarioId === permisionarioId && e.cuadra === cuadra)
+      .sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime())
+      .slice(0, 20),
+  getByDominio: (dominio: string): Estacionamiento[] =>
+    estacionamientoStore.getAll()
+      .filter((e) => e.dominio.toUpperCase() === dominio.toUpperCase())
+      .sort((a, b) => new Date(b.inicio).getTime() - new Date(a.inicio).getTime()),
   create: (data: Omit<Estacionamiento, 'id'>): Estacionamiento => {
     const list = estacionamientoStore.getAll();
     const e: Estacionamiento = { ...data, id: generateId() };

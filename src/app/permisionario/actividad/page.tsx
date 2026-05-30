@@ -15,7 +15,7 @@ import { ROUTES } from '@/lib/routes';
 import React from 'react';
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: unknown}> {
-  constructor(props: unknown) {
+  constructor(props: {children: React.ReactNode}) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -36,17 +36,20 @@ export default function ResumenPage() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    let active = true;
     async function load() {
-      const id = db.role.getActivePermisionarioId();
-      if (id) {
-        const p = await db.permisionarios.getById(id);
-        if (active) setPerm(p ?? null);
+      try {
+        const id = db.role.getActivePermisionarioId();
+        if (id) {
+          const p = await db.permisionarios.getById(id);
+          setPerm(p ?? null);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoaded(true);
       }
-      if (active) setLoaded(true);
     }
     load();
-    return () => { active = false; };
   }, []);
 
   if (!loaded) return <div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>;
@@ -78,16 +81,14 @@ function DashboardResumen({ perm }: { perm: Permisionario }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
-    async function fetchData() {
+    async function loadData() {
       try {
         const [allTickets, allPagos, obs] = await Promise.all([
           db.tickets.getAll(),
           db.pagos.getByPermisionario(perm.id),
-          db.observados.getByPermisionarioCuadra(perm.id, cuadra)
+          db.observados.getByPermisionarioCuadra(perm.id, cuadra),
         ]);
         
-        if (!active) return;
         const ticketsHoy = allTickets.filter(t => t.permisionarioId === perm.id && t.inicio.startsWith(hoyStr));
         const pagosSuccessHoy = allPagos.filter(p => p.createdAt.startsWith(hoyStr) && p.estado === 'success');
         
@@ -95,11 +96,10 @@ function DashboardResumen({ perm }: { perm: Permisionario }) {
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
     }
-    fetchData();
-    return () => { active = false; };
+    loadData();
   }, [perm.id, cuadra, hoyStr]);
 
   if (loading) return <div className="p-6 text-center text-gray-500 text-sm">Cargando datos...</div>;
@@ -470,7 +470,7 @@ function DashboardResumen({ perm }: { perm: Permisionario }) {
       <nav className="lc-bottom-nav">
         {([
           { id: 'inicio',    label: 'Inicio',    icon: LayoutGrid,     href: ROUTES.permisionario.root },
-          { id: 'vehiculos', label: 'Vehículos', icon: Car,            href: ROUTES.permisionario.registrar },
+          { id: 'vehiculos', label: 'Vehículos', icon: Car,            href: ROUTES.permisionario.vehiculos },
           { id: 'cobros',    label: 'Cobros',    icon: DollarSign,     href: ROUTES.permisionario.cobrarQr },
           { id: 'resumen',   label: 'Resumen',   icon: BarChart3,      href: ROUTES.permisionario.actividad },
           { id: 'mas',       label: 'Más',       icon: MoreHorizontal, href: ROUTES.permisionario.credencial },
