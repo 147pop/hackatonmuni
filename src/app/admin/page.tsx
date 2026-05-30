@@ -1,166 +1,106 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Users, DollarSign,
-  BarChart3, CreditCard, AlertTriangle, FileText, Building2, ArrowRight, RefreshCw,
+  Car, ParkingCircle, DollarSign, AlertTriangle, UserCheck, 
+  Map, FileText, BarChart3, TrendingUp, TrendingDown
 } from 'lucide-react';
-import { MetricGrid, type Metric } from '@/components/admin/metric-grid';
-import { PerformanceIndicators } from '@/components/admin/performance-indicators';
-import { OverstayPanel } from '@/components/admin/overstay-panel';
-import { AlertsPanel } from '@/components/admin/alerts-panel';
-import {
-  ticketStore, pagoStore, deudaStore, emergenciaStore, configStore,
-} from '@/lib/sem-store';
-import { ROUTES } from '@/lib/routes';
+import { RealtimeFeed } from '@/components/admin/realtime-feed';
+import { StatsChart } from '@/components/admin/stats-chart';
 
-const PERIODO_ACTUAL = new Date().toISOString().slice(0, 7);
+// KPIs mockeados para demostración (Deberían venir de Supabase Realtime)
+const INITIAL_KPIS = [
+  { id: 'vehiculos', label: 'Vehículos registrados', value: '128.450', trend: '+12%', isPositive: true, icon: Car, color: 'bg-blue-500' },
+  { id: 'estacionamientos', label: 'Estacionamientos hoy', value: '34.892', trend: '+8%', isPositive: true, icon: ParkingCircle, color: 'bg-green-500' },
+  { id: 'recaudacion', label: 'Recaudación total', value: '$12.450.000', trend: '+15%', isPositive: true, icon: DollarSign, color: 'bg-municipal-600' },
+  { id: 'deudas', label: 'Deudas pendientes', value: '3.245', trend: '+5%', isPositive: false, icon: AlertTriangle, color: 'bg-red-500' },
+  { id: 'previsores', label: 'Previsores activos', value: '156', trend: '+3%', isPositive: true, icon: UserCheck, color: 'bg-indigo-500' },
+];
 
-interface DashMetrics {
-  recaudadoHoy: number;
-  recaudadoMes: number;
-  ticketsActivosAhora: number;
-  deudosPendientesCount: number;
-  deudosPendientesTotal: number;
-  emergenciasActivas: number;
-  ocupacionPct: number;
-}
-
-function computeMetrics(): DashMetrics {
-  const hoy  = new Date().toISOString().split('T')[0];
-  const now  = new Date();
-  const pagos = pagoStore.getAll().filter((p) => p.estado === 'success');
-  const zonas = configStore.getZonas();
-
-  const recaudadoHoy = pagos.filter((p) => p.createdAt.startsWith(hoy)).reduce((s, p) => s + p.monto, 0);
-  const recaudadoMes = pagos.filter((p) => p.createdAt.startsWith(PERIODO_ACTUAL)).reduce((s, p) => s + p.monto, 0);
-
-  const ticketsActivosAhora = ticketStore.getAll().filter((t) => t.activo && new Date(t.vencimiento) > now).length;
-
-  const deudosPendientes = deudaStore.getPendientes();
-  const deudosPendientesTotal = deudosPendientes.reduce((s, d) => s + d.monto, 0);
-
-  const emergenciasActivas = emergenciaStore.getActivas().length;
-
-  // Ocupación: cuadras con ticket activo / total cuadras configuradas
-  const totalCuadras = zonas.reduce((s, z) => s + z.cuadras.length, 0);
-  const cuadrasConTicket = new Set(
-    ticketStore.getAll().filter((t) => t.activo && new Date(t.vencimiento) > now).map((t) => t.cuadra),
-  ).size;
-  const ocupacionPct = totalCuadras > 0 ? Math.round((cuadrasConTicket / totalCuadras) * 100) : 0;
-
-  return { recaudadoHoy, recaudadoMes, ticketsActivosAhora, deudosPendientesCount: deudosPendientes.length, deudosPendientesTotal, emergenciasActivas, ocupacionPct };
-}
+const ACCESOS_RAPIDOS = [
+  { href: '/admin/mapa', icon: Map, label: 'Mapa de Calor', color: 'text-blue-500 bg-blue-50' },
+  { href: '/admin/vehiculos', icon: Car, label: 'Vehículos', color: 'text-indigo-500 bg-indigo-50' },
+  { href: '/admin/estacionamientos', icon: ParkingCircle, label: 'Estacionamientos', color: 'text-green-500 bg-green-50' },
+  { href: '/admin/infracciones', icon: AlertTriangle, label: 'Infracciones', color: 'text-red-500 bg-red-50' },
+  { href: '/admin/tramites', icon: FileText, label: 'Trámites', color: 'text-amber-500 bg-amber-50' },
+  { href: '/admin/reportes', icon: BarChart3, label: 'Reportes', color: 'text-purple-500 bg-purple-50' },
+];
 
 export default function AdminDashboard() {
-  const [metrics, setMetrics] = useState<DashMetrics>(computeMetrics);
-  const [emergencias, setEmergencias] = useState(() => emergenciaStore.getActivas());
-  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [kpis, setKpis] = useState(INITIAL_KPIS);
 
-  const refresh = useCallback(() => {
-    setMetrics(computeMetrics());
-    setEmergencias(emergenciaStore.getActivas());
-    setLastUpdated(new Date());
+  // Simulación de Realtime en KPIs
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setKpis(prev => prev.map(kpi => {
+        if (kpi.id === 'estacionamientos') {
+          const val = parseInt(kpi.value.replace('.', '')) + Math.floor(Math.random() * 5);
+          return { ...kpi, value: val.toLocaleString('es-AR') };
+        }
+        if (kpi.id === 'recaudacion') {
+          const val = parseInt(kpi.value.replace('$', '').replace(/\./g, '')) + (Math.floor(Math.random() * 50) * 100);
+          return { ...kpi, value: `$${val.toLocaleString('es-AR')}` };
+        }
+        return kpi;
+      }));
+    }, 8000);
+    return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(refresh, 30_000);
-    return () => clearInterval(id);
-  }, [refresh]);
-
-  const m = metrics;
-  const kpis: Metric[] = [
-    { label: 'Recaudado hoy',        value: `$${m.recaudadoHoy.toLocaleString('es-AR')}`,  color: 'green',   sub: 'pagos aprobados' },
-    { label: 'Recaudado este mes',   value: `$${m.recaudadoMes.toLocaleString('es-AR')}`,  color: 'blue',    sub: PERIODO_ACTUAL },
-    { label: 'Tickets activos ahora',value: m.ticketsActivosAhora,                          color: 'default', sub: `${m.ocupacionPct}% ocupación` },
-    { label: 'Deudas pendientes',    value: m.deudosPendientesCount,                        color: m.deudosPendientesCount > 0 ? 'amber' : 'default', sub: m.deudosPendientesCount > 0 ? `$${m.deudosPendientesTotal.toLocaleString('es-AR')} total` : 'sin deudas' },
-  ];
-
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Building2 className="w-7 h-7 text-municipal-700" />
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard · RF-ADM-01</h1>
-            <p className="text-xs text-gray-400">Actualizado {lastUpdated.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+    <div className="space-y-6">
+      {/* KPIs Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between mb-4">
+              <div className={`p-3 rounded-xl text-white ${kpi.color} shadow-inner`}>
+                <kpi.icon className="w-6 h-6" />
+              </div>
+              <div className={`flex items-center gap-1 text-sm font-bold ${kpi.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                {kpi.isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                {kpi.trend}
+              </div>
+            </div>
+            <div>
+              <p className="text-gray-500 text-sm font-medium">{kpi.label}</p>
+              <h3 className="text-2xl font-display font-bold text-gray-900 mt-1">{kpi.value}</h3>
+            </div>
           </div>
-        </div>
-        <button onClick={refresh} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-          <RefreshCw className="w-4 h-4" />
-        </button>
+        ))}
       </div>
 
-      {/* Emergency alert badge */}
-      {m.emergenciasActivas > 0 && (
-        <Link href={ROUTES.admin.alertas}
-          className="flex items-center gap-3 bg-red-50 border-2 border-red-300 rounded-xl p-4 hover:bg-red-100 transition-colors animate-pulse">
-          <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
-          <div>
-            <p className="font-bold text-red-800">{m.emergenciasActivas} alerta{m.emergenciasActivas !== 1 ? 's' : ''} activa{m.emergenciasActivas !== 1 ? 's' : ''}</p>
-            <p className="text-sm text-red-600">Ver panel de alertas →</p>
-          </div>
-        </Link>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Chart */}
+        <div className="lg:col-span-2 min-h-[400px]">
+          <StatsChart />
+        </div>
 
-      {/* KPI grid */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Métricas en vivo</h2>
-        <MetricGrid metrics={kpis} />
-      </section>
+        {/* Activity Feed */}
+        <div className="lg:col-span-1 min-h-[400px] h-full">
+          <RealtimeFeed />
+        </div>
+      </div>
 
-      {/* Performance indicators */}
-      <section>
-        <PerformanceIndicators />
-      </section>
-
-      {/* Overstay panel */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Tiempo excedido — Sprint 3 overstay</h2>
-        <OverstayPanel />
-      </section>
-
-      {/* Active alerts (compact) */}
-      {emergencias.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Alertas activas</h2>
-            <Link href={ROUTES.admin.alertas} className="text-xs text-municipal-600 hover:underline">Ver todas →</Link>
-          </div>
-          <AlertsPanel emergencias={emergencias.slice(0, 2)} onResolved={refresh} compact />
-        </section>
-      )}
-
-      {/* Nav cards */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Accesos rápidos</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {NAV_CARDS.map((c) => (
-            <Link key={c.href} href={c.href}
-              className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-municipal-300 hover:shadow-sm bg-white transition-all">
-              <div className={`flex-shrink-0 ${c.color}`}>{c.icon}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900">{c.label}</p>
-                <p className="text-xs text-gray-400 truncate">{c.desc}</p>
+      {/* Accesos Rápidos */}
+      <div>
+        <h3 className="font-display font-bold text-lg text-gray-900 mb-4">Accesos Rápidos</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {ACCESOS_RAPIDOS.map((acceso) => (
+            <Link 
+              key={acceso.href} 
+              href={acceso.href}
+              className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-md hover:border-municipal-300 transition-all flex flex-col items-center justify-center gap-3 group"
+            >
+              <div className={`p-3 rounded-2xl ${acceso.color} group-hover:scale-110 transition-transform`}>
+                <acceso.icon className="w-6 h-6" />
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+              <span className="font-medium text-sm text-gray-700 text-center">{acceso.label}</span>
             </Link>
           ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 }
-
-const NAV_CARDS = [
-  { href: ROUTES.admin.permisionarios, icon: <Users className="w-5 h-5" />,        color: 'text-blue-500',   label: 'Permisionarios',  desc: 'CRUD · RF-ADM-03' },
-  { href: ROUTES.admin.liquidaciones,  icon: <DollarSign className="w-5 h-5" />,   color: 'text-green-500',  label: 'Liquidaciones',   desc: 'Cuota 20% · RF-PER-05' },
-  { href: ROUTES.admin.reportes,       icon: <BarChart3 className="w-5 h-5" />,    color: 'text-purple-500', label: 'Reportes',        desc: 'Por período/zona · RF-ADM-02' },
-  { href: ROUTES.admin.pagos,          icon: <CreditCard className="w-5 h-5" />,   color: 'text-teal-500',   label: 'Pagos',           desc: 'Tabla completa · RF-ADM-02' },
-  { href: ROUTES.admin.deudas,         icon: <AlertTriangle className="w-5 h-5" />,color: 'text-amber-500',  label: 'Deudas',          desc: 'RF-ADM-09' },
-  { href: ROUTES.admin.auditoria,      icon: <FileText className="w-5 h-5" />,     color: 'text-gray-500',   label: 'Auditoría',       desc: 'Log completo · RF-ADM-07' },
-  { href: ROUTES.admin.alertas,        icon: <AlertTriangle className="w-5 h-5" />,color: 'text-red-500',    label: 'Alertas',         desc: 'Emergencias · RF-EME-03' },
-  { href: ROUTES.admin.tarifas,        icon: <DollarSign className="w-5 h-5" />,   color: 'text-indigo-500', label: 'Configuración',   desc: 'Tarifas · Zonas · Feriados' },
-];
