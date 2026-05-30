@@ -37,8 +37,7 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
       // Desvanecer el canvas para ver calles y nombres
       const canvas = heat._canvas;
       if (canvas) {
-        canvas.style.mixBlendMode = 'multiply';
-        canvas.style.opacity = '0.55'; // Reduced opacity to see map labels
+        canvas.style.opacity = '0.35'; // Aún más transparente a pedido del usuario
       }
 
       return () => {
