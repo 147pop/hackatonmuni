@@ -19,7 +19,7 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
         blur: 28,
         maxZoom: 17,
         max: 1.0,
-        minOpacity: 0.45,
+        minOpacity: 0.1, // Reduced so it doesn't cover too much at low heat
         gradient: {
           0.0: '#0000FF',
           0.15: '#0066FF',
@@ -34,11 +34,11 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
         }
       }).addTo(map);
 
-      // Agregar clases CSS al canvas del mapa de calor para lograr el efecto de superposición
+      // Desvanecer el canvas para ver calles y nombres
       const canvas = heat._canvas;
       if (canvas) {
         canvas.style.mixBlendMode = 'multiply';
-        canvas.style.opacity = '0.85';
+        canvas.style.opacity = '0.55'; // Reduced opacity to see map labels
       }
 
       return () => {
@@ -90,9 +90,15 @@ export default function Heatmap() {
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap'
+          zIndex={100}
         />
         <ZoomControl position="bottomright" />
         <HeatLayer points={points} />
+        {/* Capa de etiquetas flotante por encima del calor (z-index alto) */}
+        <TileLayer
+          url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+          zIndex={500}
+        />
       </MapContainer>
     </div>
   );
