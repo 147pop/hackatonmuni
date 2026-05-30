@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, ZoomControl, Polyline, useMap } from 'react-leaflet';
+import { useEffect, useRef, useState } from 'react';
+import { MapContainer, TileLayer, ZoomControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -21,9 +21,7 @@ const streetNodes = [
 
 function getCentroLat(lon: number) { 
   let i = 0;
-  while (i < streetNodes.length - 1 && lon > streetNodes[i + 1].lon) {
-    i++;
-  }
+  while (i < streetNodes.length - 1 && lon > streetNodes[i + 1].lon) { i++; }
   const n1 = streetNodes[i];
   const n2 = streetNodes[i + 1] || streetNodes[i];
   if (n1.lon === n2.lon) return n1.lat;
@@ -37,7 +35,7 @@ const cuadras = [
   { num: 700, startLon: -65.40413, endLon: -65.40295 }
 ];
 
-const colores = {
+const colores: Record<string, string> = {
   libre: '#34c759',
   ocupado: '#ff3b30',
   garaje: '#ff9500',
@@ -59,12 +57,10 @@ function asignarTipoFijo(index: number, lado: string, cuadraNum: number) {
   if (cuadraNum === 900 && lado === 'norte' && index === 9) return 'calle';
   if (cuadraNum === 800 && lado === 'norte' && index === 12) return 'calle';
   if (cuadraNum === 700 && lado === 'norte' && index === 5) return 'calle';
-
   if (cuadraNum === 700 && lado === 'norte') {
       if (index === 2 || index === 8 || index === 12) return 'garaje';
       if (index === 17) return 'discapacitado';
-      if (index === 6 || index === 7) return 'especial';
-      if (index === 16) return 'especial';
+      if (index === 6 || index === 7 || index === 16) return 'especial';
   }
   if (cuadraNum === 700 && lado === 'sur') {
       if (index === 4 || index === 9 || index === 14) return 'garaje';
@@ -79,114 +75,115 @@ function asignarTipoFijo(index: number, lado: string, cuadraNum: number) {
   if (cuadraNum === 800 && lado === 'sur') {
       if (index === 8) return 'garaje';
       if (index === 0 || index === 16) return 'discapacitado';
-      if (index === 14 || index === 15) return 'especial';
-      if (index === 1 || index === 2) return 'especial';
+      if (index === 14 || index === 15 || index === 1 || index === 2) return 'especial';
   }
   if (cuadraNum === 900 && lado === 'sur' && (index === 12 || index === 13 || index === 14)) return 'garaje';
-
   return 'dinamico';
 }
 
-type Box = {
-  id: string; cuadra: number; lado: string; lonBase: number; lonSize: number;
-  estado: string; tipo: string;
-};
+interface BoxData {
+  id: string;
+  cuadra: number;
+  lado: string;
+  lonBase: number;
+  lonSize: number;
+  estado: string;
+  tipo: string;
+  poly?: L.Polyline;
+}
 
-// INITIAL BOXES
-const initialBoxes: Box[] = [];
-cuadras.forEach(cuadra => {
-  ['norte', 'sur'].forEach(lado => {
-      const totalBoxes = getTotalBoxes(cuadra.num, lado);
-      const espacioTotal = cuadra.endLon - cuadra.startLon;
-      const espacioPorBox = espacioTotal / totalBoxes;
-      const lonSizeLocal = espacioPorBox * 0.95;
-      const lonGapLocal = espacioPorBox * 0.05;
-      let currentLon = cuadra.startLon;
-      
-      for (let i = 0; i < totalBoxes; i++) {
+function LiveBoxesLayer() {
+  const map = useMap();
+  const boxesRef = useRef<BoxData[]>([]);
+
+  useEffect(() => {
+    if (!map) return;
+    
+    const allBoxes: BoxData[] = [];
+    cuadras.forEach(cuadra => {
+      ['norte', 'sur'].forEach(lado => {
+        const totalBoxes = getTotalBoxes(cuadra.num, lado);
+        const espacioTotal = cuadra.endLon - cuadra.startLon;
+        const espacioPorBox = espacioTotal / totalBoxes;
+        const lonSizeLocal = espacioPorBox * 0.95;
+        const lonGapLocal = espacioPorBox * 0.05;
+        let currentLon = cuadra.startLon;
+        
+        for (let i = 0; i < totalBoxes; i++) {
           const tipo = asignarTipoFijo(i, lado, cuadra.num);
-          initialBoxes.push({
-              id: `box-${cuadra.num}-${lado}-${i}`,
-              cuadra: cuadra.num, lado: lado, lonBase: currentLon, lonSize: lonSizeLocal,
-              estado: (tipo === 'dinamico') ? (Math.random() > 0.5 ? 'libre' : 'ocupado') : tipo,
-              tipo: tipo
+          allBoxes.push({
+            id: `box-${cuadra.num}-${lado}-${i}`,
+            cuadra: cuadra.num,
+            lado,
+            lonBase: currentLon,
+            lonSize: lonSizeLocal,
+            estado: (tipo === 'dinamico') ? (Math.random() > 0.5 ? 'libre' : 'ocupado') : tipo,
+            tipo
           });
           currentLon += (lonSizeLocal + lonGapLocal);
-      }
-  });
-});
-
-function CuadrasLayer() {
-  const map = useMap();
-  const [boxes, setBoxes] = useState<Box[]>(initialBoxes);
-  const [zoomLevel, setZoomLevel] = useState(map.getZoom());
-
-  // Listen to zoom changes to re-calculate offsets if needed
-  useEffect(() => {
-    const onZoom = () => setZoomLevel(map.getZoom());
-    map.on('zoomend', onZoom);
-    return () => { map.off('zoomend', onZoom); };
-  }, [map]);
-
-  // Simulación en vivo
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBoxes(prev => {
-        const next = [...prev];
-        const dinamicos = next.filter(b => b.tipo === 'dinamico');
-        if (dinamicos.length > 0) {
-          const cambios = Math.floor(Math.random() * 3) + 1;
-          for (let i = 0; i < cambios; i++) {
-            const randomIndex = Math.floor(Math.random() * dinamicos.length);
-            const box = dinamicos[randomIndex];
-            box.estado = box.estado === 'libre' ? 'ocupado' : 'libre';
-          }
         }
-        return next;
       });
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
+    });
+    
+    boxesRef.current = allBoxes;
 
-  return (
-    <>
-      {boxes.map(box => {
-        if (box.estado === 'calle') return null;
+    const renderizarBoxes = () => {
+      boxesRef.current.forEach(box => {
+        if (box.poly) map.removeLayer(box.poly);
+      });
+
+      boxesRef.current.forEach(box => {
+        if (box.estado === 'calle') return;
 
         const latCentro1 = getCentroLat(box.lonBase);
         const latCentro2 = getCentroLat(box.lonBase + box.lonSize);
         
         const p1 = map.project([latCentro1, box.lonBase]);
         const p2 = map.project([latCentro2, box.lonBase + box.lonSize]);
+        const pixelOffset = 6; 
 
-        const pixelOffset = 6;
-        if (box.lado === 'norte') {
-            p1.y -= pixelOffset;
-            p2.y -= pixelOffset;
-        } else {
-            p1.y += pixelOffset;
-            p2.y += pixelOffset;
-        }
+        if (box.lado === 'norte') { p1.y -= pixelOffset; p2.y -= pixelOffset; } 
+        else { p1.y += pixelOffset; p2.y += pixelOffset; }
 
         const ll1 = map.unproject(p1);
         const ll2 = map.unproject(p2);
-        
-        const weight = zoomLevel >= 19 ? 5 : 4;
-        const color = colores[box.estado as keyof typeof colores] || colores.libre;
 
-        return (
-          <Polyline
-            key={box.id}
-            positions={[[ll1.lat, ll1.lng], [ll2.lat, ll2.lng]]}
-            color={color}
-            weight={weight}
-            opacity={1}
-            pathOptions={{ transition: 'stroke 0.6s ease' } as Record<string, string>}
-          />
-        );
-      })}
-    </>
-  );
+        const color = colores[box.estado] || colores.libre;
+        const weight = map.getZoom() >= 19 ? 5 : 4;
+
+        const poly = L.polyline([[ll1.lat, ll1.lng], [ll2.lat, ll2.lng]], {
+          color, weight, opacity: 1, interactive: false
+        }).addTo(map);
+
+        box.poly = poly;
+      });
+    };
+
+    renderizarBoxes();
+    map.on('zoomend', renderizarBoxes);
+
+    const interval = setInterval(() => {
+      const dinamicos = boxesRef.current.filter(b => b.tipo === 'dinamico');
+      if (dinamicos.length > 0) {
+        const cambios = Math.floor(Math.random() * 3) + 1;
+        for (let i = 0; i < cambios; i++) {
+          const box = dinamicos[Math.floor(Math.random() * dinamicos.length)];
+          box.estado = box.estado === 'libre' ? 'ocupado' : 'libre';
+          if (box.poly) {
+            box.poly.setStyle({ color: colores[box.estado] });
+          }
+        }
+      }
+    }, 2500);
+
+    return () => {
+      clearInterval(interval);
+      map.off('zoomend', renderizarBoxes);
+      boxesRef.current.forEach(b => { if (b.poly) map.removeLayer(b.poly); });
+    };
+  }, [map]);
+
+  return null;
 }
 
 export default function ConductorAvailabilityMap() {
@@ -208,7 +205,7 @@ export default function ConductorAvailabilityMap() {
           maxZoom={22}
         />
         <ZoomControl position="bottomright" />
-        <CuadrasLayer />
+        <LiveBoxesLayer />
       </MapContainer>
 
       {/* Panel Superior */}
