@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, ZoomControl, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, ZoomControl, useMap, Pane } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -12,27 +12,25 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
   useEffect(() => {
     if (!map || points.length === 0) return;
 
-    // Importar leaflet.heat dinámicamente (solo en cliente)
     import('leaflet.heat').then(() => {
-      // @ts-ignore — leaflet.heat extiende L con heatLayer
+      // @ts-ignore
       const heat = (L as any).heatLayer(points, {
-        radius: 35,       // Radio del "spray" de cada punto
-        blur: 28,          // Difuminado para que se mezclen como aerosol
+        radius: 35,
+        blur: 28,
         maxZoom: 17,
         max: 1.0,
         minOpacity: 0.45,
-        // Gradiente arcoíris tipo mapa de TV
         gradient: {
-          0.0: '#0000FF',   // Azul frío
-          0.15: '#0066FF',  // Azul medio
-          0.30: '#00CCFF',  // Celeste
-          0.40: '#00FF88',  // Verde agua
-          0.50: '#00FF00',  // Verde
-          0.60: '#AAFF00',  // Verde lima
-          0.70: '#FFFF00',  // Amarillo
-          0.80: '#FFAA00',  // Naranja
-          0.90: '#FF4400',  // Rojo naranja
-          1.0: '#FF0000',   // Rojo intenso
+          0.0: '#0000FF',
+          0.15: '#0066FF',
+          0.30: '#00CCFF',
+          0.40: '#00FF88',
+          0.50: '#00FF00',
+          0.60: '#AAFF00',
+          0.70: '#FFFF00',
+          0.80: '#FFAA00',
+          0.90: '#FF4400',
+          1.0: '#FF0000',
         }
       }).addTo(map);
 
@@ -51,41 +49,10 @@ function generateHeatPoints(): [number, number, number][] {
   const centerLng = -65.410;
   const points: [number, number, number][] = [];
 
-  // Cluster principal: zona de alta ocupación (centro comercial)
-  for (let i = 0; i < 60; i++) {
-    points.push([
-      centerLat + (Math.random() - 0.5) * 0.008,
-      centerLng + (Math.random() - 0.5) * 0.008,
-      0.6 + Math.random() * 0.4 // Intensidad alta
-    ]);
-  }
-
-  // Cluster secundario: zona media (alrededores)
-  for (let i = 0; i < 40; i++) {
-    points.push([
-      centerLat + 0.005 + (Math.random() - 0.5) * 0.012,
-      centerLng - 0.004 + (Math.random() - 0.5) * 0.012,
-      0.3 + Math.random() * 0.4 // Intensidad media
-    ]);
-  }
-
-  // Cluster terciario: zona baja (periferia)
-  for (let i = 0; i < 25; i++) {
-    points.push([
-      centerLat - 0.006 + (Math.random() - 0.5) * 0.015,
-      centerLng + 0.006 + (Math.random() - 0.5) * 0.015,
-      0.1 + Math.random() * 0.3 // Intensidad baja
-    ]);
-  }
-
-  // Hotspot puntual: una zona muy saturada
-  for (let i = 0; i < 30; i++) {
-    points.push([
-      centerLat + 0.002 + (Math.random() - 0.5) * 0.003,
-      centerLng - 0.001 + (Math.random() - 0.5) * 0.003,
-      0.85 + Math.random() * 0.15 // Intensidad máxima
-    ]);
-  }
+  for (let i = 0; i < 60; i++) points.push([centerLat + (Math.random() - 0.5) * 0.008, centerLng + (Math.random() - 0.5) * 0.008, 0.6 + Math.random() * 0.4]);
+  for (let i = 0; i < 40; i++) points.push([centerLat + 0.005 + (Math.random() - 0.5) * 0.012, centerLng - 0.004 + (Math.random() - 0.5) * 0.012, 0.3 + Math.random() * 0.4]);
+  for (let i = 0; i < 25; i++) points.push([centerLat - 0.006 + (Math.random() - 0.5) * 0.015, centerLng + 0.006 + (Math.random() - 0.5) * 0.015, 0.1 + Math.random() * 0.3]);
+  for (let i = 0; i < 30; i++) points.push([centerLat + 0.002 + (Math.random() - 0.5) * 0.003, centerLng - 0.001 + (Math.random() - 0.5) * 0.003, 0.85 + Math.random() * 0.15]);
 
   return points;
 }
@@ -93,21 +60,12 @@ function generateHeatPoints(): [number, number, number][] {
 export default function Heatmap() {
   const [points, setPoints] = useState<[number, number, number][]>([]);
 
-  useEffect(() => {
-    setPoints(generateHeatPoints());
-  }, []);
+  useEffect(() => { setPoints(generateHeatPoints()); }, []);
 
-  // Simulación de cambio en tiempo real
   useEffect(() => {
     if (points.length === 0) return;
     const interval = setInterval(() => {
-      setPoints(prev =>
-        prev.map(([lat, lng, intensity]) => [
-          lat,
-          lng,
-          Math.max(0.05, Math.min(1, intensity + (Math.random() - 0.5) * 0.08))
-        ])
-      );
+      setPoints(prev => prev.map(([lat, lng, intensity]) => [lat, lng, Math.max(0.05, Math.min(1, intensity + (Math.random() - 0.5) * 0.08))]));
     }, 6000);
     return () => clearInterval(interval);
   }, [points.length]);
@@ -122,12 +80,23 @@ export default function Heatmap() {
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
+        {/* Capa de fondo sin etiquetas (fondo gris) */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap'
         />
+        
         <ZoomControl position="bottomright" />
+        
+        {/* Capa de Calor */}
         <HeatLayer points={points} />
+        
+        {/* Capa con las etiquetas y las lineas de las calles SUPERPUESTAS */}
+        <Pane name="labelsPane" style={{ zIndex: 650, pointerEvents: 'none' }}>
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+          />
+        </Pane>
       </MapContainer>
     </div>
   );
