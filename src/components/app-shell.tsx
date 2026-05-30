@@ -117,6 +117,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // The admin pages have their own embedded mobile app layout
+  const isAdminApp = pathname === ROUTES.admin.root || pathname.startsWith(ROUTES.admin.root + '/');
+  if (isAdminApp) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-dvh flex flex-col">
       {/* ── Header institucional ── */}
