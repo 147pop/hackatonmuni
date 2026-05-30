@@ -1,86 +1,124 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Rectangle, Tooltip, ZoomControl } from 'react-leaflet';
+import { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, ZoomControl, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Generar una grilla de "cuadras" para que parezca un mapa de calor real
-function generateHeatmapGrid() {
+// ── Componente que inyecta la capa de calor tipo "spray aerosol" ──
+function HeatLayer({ points }: { points: [number, number, number][] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || points.length === 0) return;
+
+    // Importar leaflet.heat dinámicamente (solo en cliente)
+    import('leaflet.heat').then(() => {
+      // @ts-ignore — leaflet.heat extiende L con heatLayer
+      const heat = (L as any).heatLayer(points, {
+        radius: 35,       // Radio del "spray" de cada punto
+        blur: 28,          // Difuminado para que se mezclen como aerosol
+        maxZoom: 17,
+        max: 1.0,
+        minOpacity: 0.45,
+        // Gradiente arcoíris tipo mapa de TV
+        gradient: {
+          0.0: '#0000FF',   // Azul frío
+          0.15: '#0066FF',  // Azul medio
+          0.30: '#00CCFF',  // Celeste
+          0.40: '#00FF88',  // Verde agua
+          0.50: '#00FF00',  // Verde
+          0.60: '#AAFF00',  // Verde lima
+          0.70: '#FFFF00',  // Amarillo
+          0.80: '#FFAA00',  // Naranja
+          0.90: '#FF4400',  // Rojo naranja
+          1.0: '#FF0000',   // Rojo intenso
+        }
+      }).addTo(map);
+
+      return () => {
+        map.removeLayer(heat);
+      };
+    });
+  }, [map, points]);
+
+  return null;
+}
+
+// ── Generador de puntos de calor distribuidos por la zona centro de Salta ──
+function generateHeatPoints(): [number, number, number][] {
   const centerLat = -24.789;
   const centerLng = -65.410;
-  const latStep = 0.0015; // Aprox 150m
-  const lngStep = 0.0015; // Aprox 150m
-  
-  const blocks = [];
-  let id = 1;
+  const points: [number, number, number][] = [];
 
-  for (let i = -3; i <= 3; i++) {
-    for (let j = -4; j <= 4; j++) {
-      // Evitar algunas esquinas para darle forma orgánica
-      if (Math.abs(i) === 3 && Math.abs(j) === 4) continue;
-      if (Math.abs(i) === 3 && Math.abs(j) === 3 && Math.random() > 0.5) continue;
-
-      const lat = centerLat + i * latStep;
-      const lng = centerLng + j * lngStep;
-      
-      const capacity = Math.floor(Math.random() * 30) + 10; // 10 a 40
-      // Tendencia: el centro (i=0, j=0) tiene más ocupación
-      const distance = Math.sqrt(i*i + j*j);
-      const occupancyFactor = Math.max(0, 1 - (distance / 5)); 
-      const occupied = Math.floor(capacity * (occupancyFactor * 0.7 + Math.random() * 0.3));
-
-      blocks.push({
-        id: id++,
-        name: `Cuadra ${Math.abs(i)}${Math.abs(j)} - Zona Centro`,
-        bounds: [
-          [lat - latStep/2.2, lng - lngStep/2.2], // Dejar un pequeño gap para simular calles
-          [lat + latStep/2.2, lng + lngStep/2.2]
-        ] as [[number, number], [number, number]],
-        capacity,
-        occupied,
-        collection: occupied * 150,
-        attendants: Math.random() > 0.5 ? 1 : 0
-      });
-    }
+  // Cluster principal: zona de alta ocupación (centro comercial)
+  for (let i = 0; i < 60; i++) {
+    points.push([
+      centerLat + (Math.random() - 0.5) * 0.008,
+      centerLng + (Math.random() - 0.5) * 0.008,
+      0.6 + Math.random() * 0.4 // Intensidad alta
+    ]);
   }
-  return blocks;
+
+  // Cluster secundario: zona media (alrededores)
+  for (let i = 0; i < 40; i++) {
+    points.push([
+      centerLat + 0.005 + (Math.random() - 0.5) * 0.012,
+      centerLng - 0.004 + (Math.random() - 0.5) * 0.012,
+      0.3 + Math.random() * 0.4 // Intensidad media
+    ]);
+  }
+
+  // Cluster terciario: zona baja (periferia)
+  for (let i = 0; i < 25; i++) {
+    points.push([
+      centerLat - 0.006 + (Math.random() - 0.5) * 0.015,
+      centerLng + 0.006 + (Math.random() - 0.5) * 0.015,
+      0.1 + Math.random() * 0.3 // Intensidad baja
+    ]);
+  }
+
+  // Hotspot puntual: una zona muy saturada
+  for (let i = 0; i < 30; i++) {
+    points.push([
+      centerLat + 0.002 + (Math.random() - 0.5) * 0.003,
+      centerLng - 0.001 + (Math.random() - 0.5) * 0.003,
+      0.85 + Math.random() * 0.15 // Intensidad máxima
+    ]);
+  }
+
+  return points;
 }
 
 export default function Heatmap() {
-  const [zones, setZones] = useState([]);
-  
+  const [points, setPoints] = useState<[number, number, number][]>([]);
+
   useEffect(() => {
-    // Solo generamos en el cliente para evitar hidratación mismatch
-    setZones(generateHeatmapGrid() as any);
+    setPoints(generateHeatPoints());
   }, []);
 
-  // Simulated realtime update
+  // Simulación de cambio en tiempo real
   useEffect(() => {
-    if (zones.length === 0) return;
+    if (points.length === 0) return;
     const interval = setInterval(() => {
-      setZones(prev => prev.map((z: any) => ({
-        ...z,
-        occupied: Math.min(z.capacity, Math.max(0, z.occupied + Math.floor(Math.random() * 3) - 1))
-      })));
-    }, 5000);
+      setPoints(prev =>
+        prev.map(([lat, lng, intensity]) => [
+          lat,
+          lng,
+          Math.max(0.05, Math.min(1, intensity + (Math.random() - 0.5) * 0.08))
+        ])
+      );
+    }, 6000);
     return () => clearInterval(interval);
-  }, [zones.length]);
+  }, [points.length]);
 
-  const getColor = (occupied: number, capacity: number) => {
-    const ratio = occupied / capacity;
-    if (ratio >= 0.85) return '#D93025'; // Rojo (Muy baja disp)
-    if (ratio >= 0.60) return '#D97706'; // Naranja (Baja disp)
-    if (ratio >= 0.30) return '#F59E0B'; // Amarillo (Media)
-    return '#1A7A4A'; // Verde (Alta)
-  };
-
-  if (zones.length === 0) return null;
+  if (points.length === 0) return null;
 
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden shadow-sm border border-gray-200">
-      <MapContainer 
-        center={[-24.789, -65.410]} 
-        zoom={15} 
+      <MapContainer
+        center={[-24.789, -65.410]}
+        zoom={15}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
       >
@@ -89,43 +127,7 @@ export default function Heatmap() {
           attribution='&copy; OpenStreetMap'
         />
         <ZoomControl position="bottomright" />
-        
-        {zones.map((zone: any) => {
-          const color = getColor(zone.occupied, zone.capacity);
-          const ratio = Math.round((zone.occupied / zone.capacity) * 100);
-          
-          return (
-            <Rectangle 
-              key={zone.id} 
-              bounds={zone.bounds} 
-              pathOptions={{ 
-                color: color,
-                stroke: false, // Sin bordes!
-                fillColor: color, 
-                fillOpacity: 0.55 // Translúcido para parecer heatmap
-              }}
-            >
-              <Tooltip sticky className="custom-tooltip">
-                <div className="p-2 font-body text-sm min-w-[200px]">
-                  <h3 className="font-bold text-gray-900 border-b border-gray-200 pb-1 mb-2">{zone.name}</h3>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <span className="text-gray-500">Ocupación:</span>
-                    <span className="font-bold text-right" style={{ color }}>{ratio}%</span>
-                    
-                    <span className="text-gray-500">Ocupadas:</span>
-                    <span className="font-medium text-right">{zone.occupied} / {zone.capacity}</span>
-                    
-                    <span className="text-gray-500">Recaudación:</span>
-                    <span className="font-medium text-right text-green-600">${zone.collection.toLocaleString('es-AR')}</span>
-                    
-                    <span className="text-gray-500">Previsores:</span>
-                    <span className="font-medium text-right">{zone.attendants}</span>
-                  </div>
-                </div>
-              </Tooltip>
-            </Rectangle>
-          );
-        })}
+        <HeatLayer points={points} />
       </MapContainer>
     </div>
   );
